@@ -1,0 +1,26 @@
+[gd_scene load_steps=2 format=3 uid="uid://d2k1s8m3x4q9p"]
+
+[ext_resource type="Script" path="res://src/presentation/SquadView.gd" id="1_2w4kq"]
+
+[node name="SquadView" type="Node3D"]
+script = ExtResource("1_2w4kq")
+
+[node name="UnitEmojis" type="Label3D" parent="."]
+billboard = 1
+pixel_size = 0.024
+outline_size = 10
+outline_modulate = Color(0, 0, 0, 1)
+modulate = Color(1, 1, 1, 1)
+position = Vector3(0, 0.45, 0)
+horizontal_alignment = 1
+vertical_alignment = 1
+text = ""
+
+[node name="Label3D" type="Label3D" parent="."]
+billboard = 1
+pixel_size = 0.01
+outline_size = 4
+outline_modulate = Color(0, 0, 0, 1)
+modulate = Color(1, 1, 1, 1)
+position = Vector3(0, 0.85, 0)
+text = "HP:10"

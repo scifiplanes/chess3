@@ -1,0 +1,34 @@
+[gd_scene load_steps=4 format=3 uid="uid://c2g2v5m3w4nq1"]
+
+[ext_resource type="Script" path="res://src/presentation/Main.gd" id="1_0a5qf"]
+[ext_resource type="Script" path="res://src/presentation/CameraController.gd" id="4_camctrl"]
+[ext_resource type="PackedScene" uid="uid://bq2gq6lpl0c2d" path="res://scenes/Board.tscn" id="2_5b0r3"]
+[ext_resource type="PackedScene" uid="uid://c6i8m4y0q5b2j" path="res://scenes/HUD.tscn" id="3_6n0qg"]
+
+[node name="Main" type="Node3D"]
+script = ExtResource("1_0a5qf")
+
+[node name="CameraRig" type="Node3D" parent="."]
+script = ExtResource("4_camctrl")
+
+[node name="Camera3D" type="Camera3D" parent="CameraRig"]
+transform = Transform3D(0.965926, 0, -0.258819, 0.12941, 0.866025, 0.482963, 0.224144, -0.5, 0.836516, 8, 8.5, 8)
+projection = 1
+size = 14.0
+near = 0.1
+far = 200.0
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+light_energy = 2.05
+light_specular = 0.45
+shadow_enabled = true
+shadow_bias = 0.068
+shadow_normal_bias = 1.75
+directional_shadow_max_distance = 100.0
+
+[node name="Board" parent="." instance=ExtResource("2_5b0r3")]
+
+[node name="HUD" type="CanvasLayer" parent="."]
+
+[node name="HUDRoot" parent="HUD" instance=ExtResource("3_6n0qg")]
+

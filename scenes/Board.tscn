@@ -1,0 +1,28 @@
+[gd_scene load_steps=6 format=3 uid="uid://bq2gq6lpl0c2d"]
+
+[ext_resource type="Script" path="res://src/presentation/BoardView.gd" id="1_1m0s2"]
+[ext_resource type="Script" path="res://src/presentation/InputController.gd" id="2_s1h3d"]
+[ext_resource type="Script" path="res://src/presentation/SquadLayer.gd" id="3_0p3qk"]
+[ext_resource type="PackedScene" uid="uid://d2k1s8m3x4q9p" path="res://scenes/SquadView.tscn" id="4_8r2vn"]
+
+[sub_resource type="WorldBoundaryShape3D" id="WorldBoundaryShape3D_aj22h"]
+
+[node name="Board" type="Node3D"]
+script = ExtResource("1_1m0s2")
+
+[node name="Floor" type="StaticBody3D" parent="."]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Floor"]
+shape = SubResource("WorldBoundaryShape3D_aj22h")
+
+[node name="VoxelRoot" type="Node3D" parent="."]
+
+[node name="Highlights" type="Node3D" parent="."]
+
+[node name="Squads" type="Node3D" parent="."]
+script = ExtResource("3_0p3qk")
+squad_view_scene = ExtResource("4_8r2vn")
+
+[node name="InputController" type="Node" parent="."]
+script = ExtResource("2_s1h3d")
+

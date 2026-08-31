@@ -1,0 +1,26 @@
+---
+description: Keep a concise design doc + changelog updated
+alwaysApply: true
+---
+
+# Living Design Doc + Changelog Rule
+
+Maintain two files as we build the game:
+- `DESIGN.md`: concise living design document
+- `CHANGELOG.md`: concise list of notable changes
+
+## When to update
+- After any **feature addition**, **rule change**, **mechanic rename**, or **architecture decision**.
+- If a change affects player experience, controls, camera, rendering (3D voxels/2D sprites), squads/units, or win conditions.
+
+## `DESIGN.md` constraints
+- Keep it **short** (prefer < ~150 lines).
+- Prefer **bullets**, not essays.
+- Record **decisions and rules**, not brainstorming.
+- If a section grows, **summarize** and move detail into a new doc under `docs/` (create it only when necessary).
+
+## `CHANGELOG.md` constraints
+- Keep it **short** and **chronological**.
+- One bullet per change; focus on **player-visible** changes and major milestones.
+- Always add new items under **Unreleased** unless a release is explicitly created.
+

@@ -1,0 +1,393 @@
+[gd_scene load_steps=2 format=3 uid="uid://c6i8m4y0q5b2j"]
+
+[ext_resource type="Script" path="res://src/presentation/HUD.gd" id="1_0c3jr"]
+
+[node name="HUDRoot" type="Control"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 0.0
+offset_bottom = 0.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_0c3jr")
+
+[node name="TopBar" type="PanelContainer" parent="."]
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 16.0
+offset_top = 16.0
+offset_right = -16.0
+offset_bottom = 60.0
+
+[node name="HBox" type="HBoxContainer" parent="TopBar"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="TurnLabel" type="Label" parent="TopBar/HBox"]
+text = "P1 Turn"
+
+[node name="SelectionLabel" type="Label" parent="TopBar/HBox"]
+text = "No selection"
+
+[node name="PhaseLabel" type="Label" parent="TopBar/HBox"]
+text = "Phase: Action"
+
+[node name="PromptLabel" type="Label" parent="TopBar/HBox"]
+text = ""
+
+[node name="ModeLabel" type="Label" parent="TopBar/HBox"]
+text = "Mode: Select"
+
+[node name="InfoLabel" type="Label" parent="TopBar/HBox"]
+text = ""
+
+[node name="CPLabel" type="Label" parent="TopBar/HBox"]
+text = "CP 0-0"
+
+[node name="WinnerLabel" type="Label" parent="TopBar/HBox"]
+text = ""
+
+[node name="BottomBar" type="PanelContainer" parent="."]
+anchors_preset = 14
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 16.0
+offset_top = -84.0
+offset_right = -16.0
+offset_bottom = -16.0
+
+[node name="Actions" type="HBoxContainer" parent="BottomBar"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="MoveButton" type="Button" parent="BottomBar/Actions"]
+text = "Move"
+
+[node name="AbilityBar" type="HBoxContainer" parent="BottomBar/Actions"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="EndTurnButton" type="Button" parent="BottomBar/Actions"]
+text = "End Turn"
+
+[node name="OfferPanel" type="PanelContainer" parent="."]
+visible = false
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -180.0
+offset_top = -120.0
+offset_right = 180.0
+offset_bottom = 120.0
+
+[node name="VBox" type="VBoxContainer" parent="OfferPanel"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Title" type="Label" parent="OfferPanel/VBox"]
+text = "Offer"
+
+[node name="Cards" type="HBoxContainer" parent="OfferPanel/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Card0" type="Button" parent="OfferPanel/VBox/Cards"]
+text = "Card A"
+
+[node name="Card1" type="Button" parent="OfferPanel/VBox/Cards"]
+text = "Card B"
+
+[node name="Card2" type="Button" parent="OfferPanel/VBox/Cards"]
+text = "Card C"
+
+[node name="SkipButton" type="Button" parent="OfferPanel/VBox"]
+text = "Skip"
+
+[node name="Toast" type="Label" parent="."]
+visible = false
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 24.0
+offset_top = 72.0
+offset_right = -24.0
+offset_bottom = 104.0
+horizontal_alignment = 1
+vertical_alignment = 1
+text = "Invalid action"
+
+[node name="SquadInspectPanel" type="PanelContainer" parent="."]
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 0.0
+anchor_right = 1.0
+offset_left = -320.0
+offset_top = 76.0
+offset_right = -16.0
+offset_bottom = 320.0
+
+[node name="VBox" type="VBoxContainer" parent="SquadInspectPanel"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Title" type="Label" parent="SquadInspectPanel/VBox"]
+text = "Selected Squad"
+
+[node name="CooldownsLabel" type="Label" parent="SquadInspectPanel/VBox"]
+text = "No selection"
+
+[node name="UnitsList" type="ItemList" parent="SquadInspectPanel/VBox"]
+custom_minimum_size = Vector2(0, 180)
+select_mode = 0
+
+[node name="DebugDock" type="VBoxContainer" parent="."]
+layout_mode = 0
+anchors_preset = 7
+anchor_left = 0.0
+anchor_top = 1.0
+anchor_right = 0.0
+anchor_bottom = 1.0
+offset_left = 16.0
+offset_top = -455.0
+offset_right = 296.0
+offset_bottom = -96.0
+grow_horizontal = 0
+grow_vertical = 0
+theme_override_constants/separation = 6
+
+[node name="DebugToggleButton" type="Button" parent="DebugDock"]
+layout_mode = 2
+text = "Debug"
+
+[node name="DebugPanel" type="PanelContainer" parent="DebugDock"]
+visible = false
+layout_mode = 2
+
+[node name="VBox" type="VBoxContainer" parent="DebugDock/DebugPanel"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="SectionLighting" type="Label" parent="DebugDock/DebugPanel/VBox"]
+layout_mode = 2
+text = "Lighting (Sun)"
+
+[node name="HeightRow" type="HBoxContainer" parent="DebugDock/DebugPanel/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Label" type="Label" parent="DebugDock/DebugPanel/VBox/HeightRow"]
+layout_mode = 2
+text = "Sun height °"
+
+[node name="HeightSlider" type="HSlider" parent="DebugDock/DebugPanel/VBox/HeightRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = -89.0
+max_value = 89.0
+step = 1.0
+value = -61.0
+
+[node name="HeightValue" type="Label" parent="DebugDock/DebugPanel/VBox/HeightRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(40, 0)
+text = "-61"
+horizontal_alignment = 2
+
+[node name="AngleRow" type="HBoxContainer" parent="DebugDock/DebugPanel/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Label" type="Label" parent="DebugDock/DebugPanel/VBox/AngleRow"]
+layout_mode = 2
+text = "Sun angle °"
+
+[node name="AngleSlider" type="HSlider" parent="DebugDock/DebugPanel/VBox/AngleRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.0
+max_value = 360.0
+step = 1.0
+value = 330.0
+
+[node name="AngleValue" type="Label" parent="DebugDock/DebugPanel/VBox/AngleRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(40, 0)
+text = "330"
+horizontal_alignment = 2
+
+[node name="EnergyRow" type="HBoxContainer" parent="DebugDock/DebugPanel/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Label" type="Label" parent="DebugDock/DebugPanel/VBox/EnergyRow"]
+layout_mode = 2
+text = "Energy"
+
+[node name="EnergySlider" type="HSlider" parent="DebugDock/DebugPanel/VBox/EnergyRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.0
+max_value = 3.0
+step = 0.05
+value = 2.05
+
+[node name="EnergyValue" type="Label" parent="DebugDock/DebugPanel/VBox/EnergyRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(40, 0)
+text = "2.05"
+horizontal_alignment = 2
+
+[node name="ShadowCheck" type="CheckBox" parent="DebugDock/DebugPanel/VBox"]
+layout_mode = 2
+button_pressed = true
+text = "Shadows"
+
+[node name="BiasRow" type="HBoxContainer" parent="DebugDock/DebugPanel/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Label" type="Label" parent="DebugDock/DebugPanel/VBox/BiasRow"]
+layout_mode = 2
+text = "Shadow bias"
+
+[node name="BiasSlider" type="HSlider" parent="DebugDock/DebugPanel/VBox/BiasRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.0
+max_value = 0.5
+step = 0.001
+value = 0.068
+
+[node name="BiasValue" type="Label" parent="DebugDock/DebugPanel/VBox/BiasRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(48, 0)
+text = "0.068"
+horizontal_alignment = 2
+
+[node name="NormalBiasRow" type="HBoxContainer" parent="DebugDock/DebugPanel/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Label" type="Label" parent="DebugDock/DebugPanel/VBox/NormalBiasRow"]
+layout_mode = 2
+text = "Normal bias"
+
+[node name="NormalBiasSlider" type="HSlider" parent="DebugDock/DebugPanel/VBox/NormalBiasRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.0
+max_value = 8.0
+step = 0.05
+value = 1.75
+
+[node name="NormalBiasValue" type="Label" parent="DebugDock/DebugPanel/VBox/NormalBiasRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(48, 0)
+text = "1.75"
+horizontal_alignment = 2
+
+[node name="MaxDistRow" type="HBoxContainer" parent="DebugDock/DebugPanel/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Label" type="Label" parent="DebugDock/DebugPanel/VBox/MaxDistRow"]
+layout_mode = 2
+text = "Shadow max dist"
+
+[node name="MaxDistSlider" type="HSlider" parent="DebugDock/DebugPanel/VBox/MaxDistRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 10.0
+max_value = 400.0
+step = 5.0
+value = 100.0
+
+[node name="MaxDistValue" type="Label" parent="DebugDock/DebugPanel/VBox/MaxDistRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(44, 0)
+text = "100"
+horizontal_alignment = 2
+
+[node name="ColorRow" type="HBoxContainer" parent="DebugDock/DebugPanel/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Label" type="Label" parent="DebugDock/DebugPanel/VBox/ColorRow"]
+layout_mode = 2
+text = "Color"
+
+[node name="LightColorPicker" type="ColorPickerButton" parent="DebugDock/DebugPanel/VBox/ColorRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Pick"
+color = Color(1, 1, 1, 1)
+
+[node name="SpecularRow" type="HBoxContainer" parent="DebugDock/DebugPanel/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Label" type="Label" parent="DebugDock/DebugPanel/VBox/SpecularRow"]
+layout_mode = 2
+text = "Specular"
+
+[node name="SpecularSlider" type="HSlider" parent="DebugDock/DebugPanel/VBox/SpecularRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.0
+max_value = 1.0
+step = 0.05
+value = 0.45
+
+[node name="SpecularValue" type="Label" parent="DebugDock/DebugPanel/VBox/SpecularRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(40, 0)
+text = "0.45"
+horizontal_alignment = 2
+
+[node name="MainMenu" type="ColorRect" parent="."]
+visible = false
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+color = Color(0.02, 0.03, 0.05, 0.72)
+
+[node name="Center" type="CenterContainer" parent="MainMenu"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Panel" type="PanelContainer" parent="MainMenu/Center"]
+custom_minimum_size = Vector2(280, 0)
+layout_mode = 2
+
+[node name="VBox" type="VBoxContainer" parent="MainMenu/Center/Panel"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Title" type="Label" parent="MainMenu/Center/Panel/VBox"]
+layout_mode = 2
+text = "Menu"
+horizontal_alignment = 1
+
+[node name="ResumeButton" type="Button" parent="MainMenu/Center/Panel/VBox"]
+layout_mode = 2
+text = "Resume"
+
+[node name="RestartButton" type="Button" parent="MainMenu/Center/Panel/VBox"]
+layout_mode = 2
+text = "Restart Match"
+
+[node name="QuitButton" type="Button" parent="MainMenu/Center/Panel/VBox"]
+layout_mode = 2
+text = "Quit"

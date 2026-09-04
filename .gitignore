@@ -1,14 +1,18 @@
 .DS_Store
 .idea/
 .vscode/
+.cursor/
 node_modules/
+
+# Agent scratch
+.unlazy/
+GATES.md
 
 # Godot 4.x
 .godot/
 .import/
 *.import
 export.cfg
-export_presets.cfg
 
 # Mono/C#
 .mono/
@@ -18,7 +22,7 @@ export_presets.cfg
 *.tmp
 *.swp
 
-# Build outputs
+# Build outputs (web export → build/web/)
 bin/
 build/
 dist/

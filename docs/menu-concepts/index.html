@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Chess 3 — Menu concepts (CRT)</title>
+  <style>
+    :root { color-scheme: dark; }
+    body {
+      margin: 0;
+      font: 15px/1.45 ui-sans-serif, system-ui, sans-serif;
+      background: #0a0908;
+      color: #d4c4a0;
+      padding: 24px 28px 48px;
+      max-width: 960px;
+    }
+    h1 { font-size: 1.35rem; font-weight: 600; margin: 0 0 6px; color: #f0d898; }
+    .sub { margin: 0 0 28px; color: #887755; }
+    nav { margin-bottom: 32px; padding: 12px 16px; background: #141210; border: 1px solid #3a3020; border-radius: 12px; }
+    nav a { color: #e8b04a; margin-right: 16px; }
+    section { margin-bottom: 44px; }
+    h2 { font-size: 1.05rem; margin: 0 0 8px; color: #ffe8b0; }
+    .desc { margin: 0 0 12px; color: #998866; font-size: 14px; }
+    img {
+      display: block;
+      width: 100%;
+      height: auto;
+      border: 1px solid #4a4030;
+      border-radius: 12px;
+      background: #000;
+    }
+    .flow {
+      font-family: ui-monospace, monospace;
+      font-size: 13px;
+      line-height: 1.5;
+      background: #12100e;
+      border: 1px solid #3a3020;
+      padding: 16px;
+      border-radius: 12px;
+      color: #bba878;
+      white-space: pre;
+      margin-bottom: 32px;
+    }
+    details { margin-top: 48px; color: #666; }
+    details summary { cursor: pointer; color: #888; margin-bottom: 16px; }
+  </style>
+</head>
+<body>
+  <h1>Chess 3 — Main menu concepts</h1>
+  <p class="sub"><strong>Direction v2:</strong> rounded CRT-era terminal (amber phosphor, scanlines, curved bezel). See <a href="RESEARCH.md">RESEARCH.md</a>.</p>
+
+  <nav>
+    <a href="#main">Main</a>
+    <a href="#prep">Prep (old)</a>
+    <a href="#bay">Loadout bay</a>
+    <a href="#catalog">Catalog</a>
+    <a href="#draft">Gene draft</a>
+    <a href="#handoff">Pass handoff</a>
+    <a href="#demo">Demo spectator</a>
+    <a href="#demo-gap">Demo interstitial</a>
+    <a href="#settings">Settings</a>
+  </nav>
+
+  <div class="flow">MAIN MENU
+├── Hot-seat → Loadout bay (default) ─┬─ Customize catalog
+│                    └─ optional Draft ritual ─┘
+│              → Pass to P2 → Match
+├── Demo     → AI loop (match → interstitial → …)
+├── Settings
+└── Exit</div>
+
+  <section id="main">
+    <h2>01 — Main menu (CRT)</h2>
+    <p class="desc">Curved phosphor screen · rounded pill buttons · amber scanline glow.</p>
+    <img src="menu-concept-01-main-crt.png" alt="CRT main menu" />
+  </section>
+
+  <section id="bay">
+    <h2>02b — Loadout bay (default · proposed)</h2>
+    <p class="desc">One player at a time · style pills · specimen rack of cartridges · CAPACITANCE gauge · LOCK · PASS TO P2. Not a gene spreadsheet.</p>
+    <img src="menu-concept-02b-loadout-bay.png" alt="Loadout bay concept" />
+  </section>
+
+  <section id="catalog">
+    <h2>02c — Loadout bay · Customize catalog</h2>
+    <p class="desc">Gene catalog wall — tap tiles to add; rack stays as the loadout truth.</p>
+    <img src="menu-concept-02c-loadout-catalog.png" alt="Loadout catalog concept" />
+  </section>
+
+  <section id="draft">
+    <h2>02d — Gene draft (optional mode)</h2>
+    <p class="desc">Same screen shell · DRAFT tab · 5-card offer pack (in-match muscle memory) · REROLL · rack fills over picks.</p>
+    <img src="menu-concept-02d-gene-draft.png" alt="Gene draft concept" />
+  </section>
+
+  <section id="handoff">
+    <h2>02e — Pass device handoff</h2>
+    <p class="desc">Full-screen CRT overlay after P1 locks — one job: hand the device to P2.</p>
+    <img src="menu-concept-02e-pass-handoff.png" alt="Pass handoff concept" />
+  </section>
+
+  <section id="prep">
+    <h2>02 — Hot-seat prep (CRT · superseded Excel split)</h2>
+    <p class="desc">Old dual-column gene rows + steppers — kept for comparison only.</p>
+    <img src="menu-concept-02-hotseat-prep-crt.png" alt="CRT hot-seat deck prep (old)" />
+  </section>
+
+  <section id="demo">
+    <h2>03 — Demo: spectator match (CRT)</h2>
+    <p class="desc">Board-first with rounded tempo overlay on CRT glass.</p>
+    <img src="menu-concept-03-demo-spectator-crt.png" alt="CRT demo spectator" />
+  </section>
+
+  <section id="demo-gap">
+    <h2>05 — Demo: between matches (CRT)</h2>
+    <p class="desc">Result card + countdown on rounded terminal sheet.</p>
+    <img src="menu-concept-05-demo-between-crt.png" alt="CRT demo interstitial" />
+  </section>
+
+  <section id="settings">
+    <h2>04 — Settings (CRT)</h2>
+    <p class="desc">Rounded settings sheet · pill toggles · amber sliders.</p>
+    <img src="menu-concept-04-settings-crt.png" alt="CRT settings" />
+  </section>
+
+  <details>
+    <summary>v1 — angular K1 chrome (superseded)</summary>
+    <section>
+      <h2>01 — Main menu (v1)</h2>
+      <img src="menu-concept-01-main.png" alt="v1 main menu" />
+    </section>
+    <section>
+      <h2>02 — Hot-seat prep (v1)</h2>
+      <img src="menu-concept-02-hotseat-prep.png" alt="v1 prep" />
+    </section>
+    <section>
+      <h2>03 — Demo spectator (v1)</h2>
+      <img src="menu-concept-03-demo-spectator.png" alt="v1 demo" />
+    </section>
+    <section>
+      <h2>05 — Demo interstitial (v1)</h2>
+      <img src="menu-concept-05-demo-between-matches.png" alt="v1 interstitial" />
+    </section>
+    <section>
+      <h2>04 — Settings (v1)</h2>
+      <img src="menu-concept-04-settings.png" alt="v1 settings" />
+    </section>
+  </details>
+</body>
+</html>

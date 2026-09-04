@@ -20,6 +20,9 @@ var cooldowns := {}
 # Snare: cannot move while turn_number < this value (global turn counter).
 var snared_no_move_until_turn: int = -1
 
+# Chess 3: once the mutant leaves the Spawn Pool, organs can no longer be attached.
+var organs_locked: bool = false
+
 func _init(p_id: int, p_owner: int, p_cell: Vector2i) -> void:
 	id = p_id
 	owner = p_owner

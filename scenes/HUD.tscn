@@ -6,163 +6,202 @@
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 0.0
-offset_top = 0.0
-offset_right = 0.0
-offset_bottom = 0.0
 grow_horizontal = 2
 grow_vertical = 2
+mouse_filter = 2
 script = ExtResource("1_0c3jr")
 
 [node name="TopBar" type="PanelContainer" parent="."]
-anchors_preset = 10
-anchor_right = 1.0
+unique_name_in_owner = true
+anchors_preset = 0
 offset_left = 16.0
-offset_top = 16.0
-offset_right = -16.0
-offset_bottom = 60.0
+offset_top = 14.0
+offset_right = 188.0
+offset_bottom = 52.0
+mouse_filter = 0
 
-[node name="HBox" type="HBoxContainer" parent="TopBar"]
+[node name="PhaseLabel" type="Label" parent="TopBar"]
 layout_mode = 2
-theme_override_constants/separation = 16
+theme_override_font_sizes/font_size = 13
+text = "PHASE 1 / TURN 01"
+horizontal_alignment = 1
+vertical_alignment = 1
 
-[node name="TurnLabel" type="Label" parent="TopBar/HBox"]
-text = "P1 Turn"
-
-[node name="SelectionLabel" type="Label" parent="TopBar/HBox"]
-text = "No selection"
-
-[node name="PhaseLabel" type="Label" parent="TopBar/HBox"]
-text = "Phase: Action"
-
-[node name="PromptLabel" type="Label" parent="TopBar/HBox"]
-text = ""
-
-[node name="ModeLabel" type="Label" parent="TopBar/HBox"]
-text = "Mode: Select"
-
-[node name="InfoLabel" type="Label" parent="TopBar/HBox"]
-text = ""
-
-[node name="CPLabel" type="Label" parent="TopBar/HBox"]
-text = "CP 0-0"
-
-[node name="WinnerLabel" type="Label" parent="TopBar/HBox"]
-text = ""
-
-[node name="BottomBar" type="PanelContainer" parent="."]
-anchors_preset = 14
+[node name="BottomBar" type="HBoxContainer" parent="."]
+anchors_preset = 3
+anchor_left = 1.0
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 16.0
-offset_top = -84.0
-offset_right = -16.0
-offset_bottom = -16.0
-
-[node name="Actions" type="HBoxContainer" parent="BottomBar"]
-layout_mode = 2
+offset_left = -280.0
+offset_top = -86.0
+offset_right = -14.0
+offset_bottom = -14.0
+grow_horizontal = 0
+grow_vertical = 0
 theme_override_constants/separation = 12
+alignment = 2
+mouse_filter = 0
 
-[node name="MoveButton" type="Button" parent="BottomBar/Actions"]
-text = "Move"
-
-[node name="AbilityBar" type="HBoxContainer" parent="BottomBar/Actions"]
+[node name="AbilityBar" type="HBoxContainer" parent="BottomBar"]
 layout_mode = 2
+theme_override_constants/separation = 4
+alignment = 2
+
+[node name="MoveButton" type="Button" parent="BottomBar"]
+custom_minimum_size = Vector2(118, 66)
+layout_mode = 2
+text = "MOVE"
+
+[node name="EndTurnButton" type="Button" parent="BottomBar"]
+custom_minimum_size = Vector2(118, 66)
+layout_mode = 2
+text = "END"
+
+[node name="CpCluster" type="HBoxContainer" parent="."]
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -140.0
+offset_top = 12.0
+offset_right = -16.0
+offset_bottom = 68.0
+grow_horizontal = 0
 theme_override_constants/separation = 8
+mouse_filter = 0
 
-[node name="EndTurnButton" type="Button" parent="BottomBar/Actions"]
-text = "End Turn"
+[node name="PromptChip" type="PanelContainer" parent="."]
+visible = false
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -220.0
+offset_top = 8.0
+offset_right = 220.0
+offset_bottom = 36.0
+grow_horizontal = 2
+mouse_filter = 2
 
-[node name="OfferPanel" type="PanelContainer" parent="."]
+[node name="PromptLabel" type="Label" parent="PromptChip"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+text = ""
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 2
+
+[node name="WinnerLabel" type="Label" parent="."]
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -160.0
+offset_top = 52.0
+offset_right = 160.0
+offset_bottom = 84.0
+grow_horizontal = 2
+theme_override_font_sizes/font_size = 18
+horizontal_alignment = 1
+text = ""
+
+[node name="SquadInspectPanel" type="PanelContainer" parent="."]
+visible = false
+anchors_preset = 0
+offset_left = 18.0
+offset_top = 66.0
+offset_right = 250.0
+offset_bottom = 210.0
+mouse_filter = 0
+
+[node name="VBox" type="VBoxContainer" parent="SquadInspectPanel"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Title" type="Label" parent="SquadInspectPanel/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+text = "TRACK"
+
+[node name="CooldownsLabel" type="Label" parent="SquadInspectPanel/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+text = "No selection"
+
+[node name="UnitsList" type="ItemList" parent="SquadInspectPanel/VBox"]
+custom_minimum_size = Vector2(0, 90)
+layout_mode = 2
+select_mode = 0
+
+[node name="OfferPanel" type="MarginContainer" parent="."]
+visible = false
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -320.0
+offset_top = -158.0
+offset_right = 320.0
+offset_bottom = -14.0
+grow_horizontal = 2
+grow_vertical = 0
+mouse_filter = 0
+
+[node name="VBox" type="VBoxContainer" parent="OfferPanel"]
+layout_mode = 2
+theme_override_constants/separation = 6
+mouse_filter = 0
+
+[node name="Title" type="Label" parent="OfferPanel/VBox"]
+layout_mode = 2
+text = "GENE TRAY"
+horizontal_alignment = 1
+
+[node name="Cards" type="HBoxContainer" parent="OfferPanel/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 18
+alignment = 1
+mouse_filter = 0
+
+[node name="SkipButton" type="Button" parent="OfferPanel/VBox"]
+custom_minimum_size = Vector2(72, 22)
+layout_mode = 2
+size_flags_horizontal = 4
+text = "SKIP"
+
+[node name="Toast" type="Label" parent="."]
 visible = false
 anchors_preset = 8
 anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -180.0
-offset_top = -120.0
-offset_right = 180.0
-offset_bottom = 120.0
-
-[node name="VBox" type="VBoxContainer" parent="OfferPanel"]
-layout_mode = 2
-theme_override_constants/separation = 10
-
-[node name="Title" type="Label" parent="OfferPanel/VBox"]
-text = "Offer"
-
-[node name="Cards" type="HBoxContainer" parent="OfferPanel/VBox"]
-layout_mode = 2
-theme_override_constants/separation = 12
-
-[node name="Card0" type="Button" parent="OfferPanel/VBox/Cards"]
-text = "Card A"
-
-[node name="Card1" type="Button" parent="OfferPanel/VBox/Cards"]
-text = "Card B"
-
-[node name="Card2" type="Button" parent="OfferPanel/VBox/Cards"]
-text = "Card C"
-
-[node name="SkipButton" type="Button" parent="OfferPanel/VBox"]
-text = "Skip"
-
-[node name="Toast" type="Label" parent="."]
-visible = false
-anchors_preset = 10
-anchor_right = 1.0
-offset_left = 24.0
-offset_top = 72.0
-offset_right = -24.0
-offset_bottom = 104.0
+offset_left = -200.0
+offset_top = -20.0
+offset_right = 200.0
+offset_bottom = 20.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_font_sizes/font_size = 16
 horizontal_alignment = 1
 vertical_alignment = 1
 text = "Invalid action"
 
-[node name="SquadInspectPanel" type="PanelContainer" parent="."]
-anchors_preset = 3
-anchor_left = 1.0
-anchor_top = 0.0
-anchor_right = 1.0
-offset_left = -320.0
-offset_top = 76.0
-offset_right = -16.0
-offset_bottom = 320.0
-
-[node name="VBox" type="VBoxContainer" parent="SquadInspectPanel"]
-layout_mode = 2
-theme_override_constants/separation = 8
-
-[node name="Title" type="Label" parent="SquadInspectPanel/VBox"]
-text = "Selected Squad"
-
-[node name="CooldownsLabel" type="Label" parent="SquadInspectPanel/VBox"]
-text = "No selection"
-
-[node name="UnitsList" type="ItemList" parent="SquadInspectPanel/VBox"]
-custom_minimum_size = Vector2(0, 180)
-select_mode = 0
-
 [node name="DebugDock" type="VBoxContainer" parent="."]
 layout_mode = 0
-anchors_preset = 7
-anchor_left = 0.0
+anchors_preset = 2
 anchor_top = 1.0
-anchor_right = 0.0
 anchor_bottom = 1.0
 offset_left = 16.0
-offset_top = -455.0
-offset_right = 296.0
-offset_bottom = -96.0
-grow_horizontal = 0
+offset_top = -560.0
+offset_right = 280.0
+offset_bottom = -130.0
 grow_vertical = 0
 theme_override_constants/separation = 6
 
 [node name="DebugToggleButton" type="Button" parent="DebugDock"]
 layout_mode = 2
-text = "Debug"
+text = "…"
+custom_minimum_size = Vector2(28, 24)
 
 [node name="DebugPanel" type="PanelContainer" parent="DebugDock"]
 visible = false
@@ -170,7 +209,7 @@ layout_mode = 2
 
 [node name="VBox" type="VBoxContainer" parent="DebugDock/DebugPanel"]
 layout_mode = 2
-theme_override_constants/separation = 10
+theme_override_constants/separation = 8
 
 [node name="SectionLighting" type="Label" parent="DebugDock/DebugPanel/VBox"]
 layout_mode = 2
@@ -178,7 +217,6 @@ text = "Lighting (Sun)"
 
 [node name="HeightRow" type="HBoxContainer" parent="DebugDock/DebugPanel/VBox"]
 layout_mode = 2
-theme_override_constants/separation = 8
 
 [node name="Label" type="Label" parent="DebugDock/DebugPanel/VBox/HeightRow"]
 layout_mode = 2
@@ -200,7 +238,6 @@ horizontal_alignment = 2
 
 [node name="AngleRow" type="HBoxContainer" parent="DebugDock/DebugPanel/VBox"]
 layout_mode = 2
-theme_override_constants/separation = 8
 
 [node name="Label" type="Label" parent="DebugDock/DebugPanel/VBox/AngleRow"]
 layout_mode = 2
@@ -222,7 +259,6 @@ horizontal_alignment = 2
 
 [node name="EnergyRow" type="HBoxContainer" parent="DebugDock/DebugPanel/VBox"]
 layout_mode = 2
-theme_override_constants/separation = 8
 
 [node name="Label" type="Label" parent="DebugDock/DebugPanel/VBox/EnergyRow"]
 layout_mode = 2
@@ -249,7 +285,6 @@ text = "Shadows"
 
 [node name="BiasRow" type="HBoxContainer" parent="DebugDock/DebugPanel/VBox"]
 layout_mode = 2
-theme_override_constants/separation = 8
 
 [node name="Label" type="Label" parent="DebugDock/DebugPanel/VBox/BiasRow"]
 layout_mode = 2
@@ -271,7 +306,6 @@ horizontal_alignment = 2
 
 [node name="NormalBiasRow" type="HBoxContainer" parent="DebugDock/DebugPanel/VBox"]
 layout_mode = 2
-theme_override_constants/separation = 8
 
 [node name="Label" type="Label" parent="DebugDock/DebugPanel/VBox/NormalBiasRow"]
 layout_mode = 2
@@ -293,7 +327,6 @@ horizontal_alignment = 2
 
 [node name="MaxDistRow" type="HBoxContainer" parent="DebugDock/DebugPanel/VBox"]
 layout_mode = 2
-theme_override_constants/separation = 8
 
 [node name="Label" type="Label" parent="DebugDock/DebugPanel/VBox/MaxDistRow"]
 layout_mode = 2
@@ -315,7 +348,6 @@ horizontal_alignment = 2
 
 [node name="ColorRow" type="HBoxContainer" parent="DebugDock/DebugPanel/VBox"]
 layout_mode = 2
-theme_override_constants/separation = 8
 
 [node name="Label" type="Label" parent="DebugDock/DebugPanel/VBox/ColorRow"]
 layout_mode = 2
@@ -329,7 +361,6 @@ color = Color(1, 1, 1, 1)
 
 [node name="SpecularRow" type="HBoxContainer" parent="DebugDock/DebugPanel/VBox"]
 layout_mode = 2
-theme_override_constants/separation = 8
 
 [node name="Label" type="Label" parent="DebugDock/DebugPanel/VBox/SpecularRow"]
 layout_mode = 2
@@ -347,6 +378,284 @@ value = 0.45
 layout_mode = 2
 custom_minimum_size = Vector2(40, 0)
 text = "0.45"
+horizontal_alignment = 2
+
+[node name="SectionCheats" type="Label" parent="DebugDock/DebugPanel/VBox"]
+layout_mode = 2
+text = "Cheats"
+
+[node name="SpawnMutantButton" type="Button" parent="DebugDock/DebugPanel/VBox"]
+layout_mode = 2
+text = "Spawn random multi-organ"
+
+[node name="SectionDither" type="Label" parent="DebugDock/DebugPanel/VBox"]
+layout_mode = 2
+text = "Emoji dither"
+
+[node name="DitherEnabled" type="CheckBox" parent="DebugDock/DebugPanel/VBox"]
+layout_mode = 2
+button_pressed = true
+text = "Dither enabled"
+
+[node name="DitherStrengthRow" type="HBoxContainer" parent="DebugDock/DebugPanel/VBox"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="DebugDock/DebugPanel/VBox/DitherStrengthRow"]
+layout_mode = 2
+text = "Strength"
+
+[node name="DitherStrengthSlider" type="HSlider" parent="DebugDock/DebugPanel/VBox/DitherStrengthRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.0
+max_value = 1.0
+step = 0.05
+value = 0.72
+
+[node name="DitherStrengthValue" type="Label" parent="DebugDock/DebugPanel/VBox/DitherStrengthRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(40, 0)
+text = "0.72"
+horizontal_alignment = 2
+
+[node name="DitherLevelsRow" type="HBoxContainer" parent="DebugDock/DebugPanel/VBox"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="DebugDock/DebugPanel/VBox/DitherLevelsRow"]
+layout_mode = 2
+text = "Levels"
+
+[node name="DitherLevelsSlider" type="HSlider" parent="DebugDock/DebugPanel/VBox/DitherLevelsRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 2.0
+max_value = 12.0
+step = 1.0
+value = 6.0
+
+[node name="DitherLevelsValue" type="Label" parent="DebugDock/DebugPanel/VBox/DitherLevelsRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(40, 0)
+text = "6"
+horizontal_alignment = 2
+
+[node name="SectionPostDither" type="Label" parent="DebugDock/DebugPanel/VBox"]
+layout_mode = 2
+text = "Post dither"
+
+[node name="PostDitherEnabled" type="CheckBox" parent="DebugDock/DebugPanel/VBox"]
+layout_mode = 2
+button_pressed = true
+text = "Post dither enabled"
+
+[node name="PostDitherStrengthRow" type="HBoxContainer" parent="DebugDock/DebugPanel/VBox"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="DebugDock/DebugPanel/VBox/PostDitherStrengthRow"]
+layout_mode = 2
+text = "Strength"
+
+[node name="PostDitherStrengthSlider" type="HSlider" parent="DebugDock/DebugPanel/VBox/PostDitherStrengthRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.0
+max_value = 1.0
+step = 0.05
+value = 0.55
+
+[node name="PostDitherStrengthValue" type="Label" parent="DebugDock/DebugPanel/VBox/PostDitherStrengthRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(40, 0)
+text = "0.55"
+horizontal_alignment = 2
+
+[node name="PostDitherColourRow" type="HBoxContainer" parent="DebugDock/DebugPanel/VBox"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="DebugDock/DebugPanel/VBox/PostDitherColourRow"]
+layout_mode = 2
+text = "Colour"
+
+[node name="PostDitherColourSlider" type="HSlider" parent="DebugDock/DebugPanel/VBox/PostDitherColourRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.0
+max_value = 1.0
+step = 0.05
+value = 0.6
+
+[node name="PostDitherColourValue" type="Label" parent="DebugDock/DebugPanel/VBox/PostDitherColourRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(40, 0)
+text = "0.60"
+horizontal_alignment = 2
+
+[node name="PostDitherPixelRow" type="HBoxContainer" parent="DebugDock/DebugPanel/VBox"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="DebugDock/DebugPanel/VBox/PostDitherPixelRow"]
+layout_mode = 2
+text = "Pixel"
+
+[node name="PostDitherPixelSlider" type="HSlider" parent="DebugDock/DebugPanel/VBox/PostDitherPixelRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 1.0
+max_value = 8.0
+step = 1.0
+value = 1.0
+
+[node name="PostDitherPixelValue" type="Label" parent="DebugDock/DebugPanel/VBox/PostDitherPixelRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(40, 0)
+text = "1"
+horizontal_alignment = 2
+
+[node name="PostDitherLevelsRow" type="HBoxContainer" parent="DebugDock/DebugPanel/VBox"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="DebugDock/DebugPanel/VBox/PostDitherLevelsRow"]
+layout_mode = 2
+text = "Levels"
+
+[node name="PostDitherLevelsSlider" type="HSlider" parent="DebugDock/DebugPanel/VBox/PostDitherLevelsRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 2.0
+max_value = 32.0
+step = 1.0
+value = 10.0
+
+[node name="PostDitherLevelsValue" type="Label" parent="DebugDock/DebugPanel/VBox/PostDitherLevelsRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(40, 0)
+text = "10"
+horizontal_alignment = 2
+
+[node name="PostDitherMatrixRow" type="HBoxContainer" parent="DebugDock/DebugPanel/VBox"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="DebugDock/DebugPanel/VBox/PostDitherMatrixRow"]
+layout_mode = 2
+text = "Matrix"
+
+[node name="PostDitherMatrixSlider" type="HSlider" parent="DebugDock/DebugPanel/VBox/PostDitherMatrixRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 2.0
+max_value = 8.0
+step = 2.0
+value = 4.0
+
+[node name="PostDitherMatrixValue" type="Label" parent="DebugDock/DebugPanel/VBox/PostDitherMatrixRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(40, 0)
+text = "4"
+horizontal_alignment = 2
+
+[node name="PostDitherPaletteRow" type="HBoxContainer" parent="DebugDock/DebugPanel/VBox"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="DebugDock/DebugPanel/VBox/PostDitherPaletteRow"]
+layout_mode = 2
+text = "Palette"
+
+[node name="PostDitherPaletteSlider" type="HSlider" parent="DebugDock/DebugPanel/VBox/PostDitherPaletteRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.0
+max_value = 4.0
+step = 1.0
+value = 4.0
+
+[node name="PostDitherPaletteValue" type="Label" parent="DebugDock/DebugPanel/VBox/PostDitherPaletteRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(40, 0)
+text = "4"
+horizontal_alignment = 2
+
+[node name="PostDitherPal0MixRow" type="HBoxContainer" parent="DebugDock/DebugPanel/VBox"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="DebugDock/DebugPanel/VBox/PostDitherPal0MixRow"]
+layout_mode = 2
+text = "Pal0 mix"
+
+[node name="PostDitherPal0MixSlider" type="HSlider" parent="DebugDock/DebugPanel/VBox/PostDitherPal0MixRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.0
+max_value = 1.0
+step = 0.05
+value = 1.0
+
+[node name="PostDitherPal0MixValue" type="Label" parent="DebugDock/DebugPanel/VBox/PostDitherPal0MixRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(40, 0)
+text = "1.00"
+horizontal_alignment = 2
+
+[node name="PostDitherGainRow" type="HBoxContainer" parent="DebugDock/DebugPanel/VBox"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="DebugDock/DebugPanel/VBox/PostDitherGainRow"]
+layout_mode = 2
+text = "Gain"
+
+[node name="PostDitherGainSlider" type="HSlider" parent="DebugDock/DebugPanel/VBox/PostDitherGainRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.0
+max_value = 3.0
+step = 0.05
+value = 1.0
+
+[node name="PostDitherGainValue" type="Label" parent="DebugDock/DebugPanel/VBox/PostDitherGainRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(40, 0)
+text = "1.00"
+horizontal_alignment = 2
+
+[node name="PostDitherLiftRow" type="HBoxContainer" parent="DebugDock/DebugPanel/VBox"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="DebugDock/DebugPanel/VBox/PostDitherLiftRow"]
+layout_mode = 2
+text = "Lift"
+
+[node name="PostDitherLiftSlider" type="HSlider" parent="DebugDock/DebugPanel/VBox/PostDitherLiftRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = -0.5
+max_value = 0.5
+step = 0.01
+value = 0.0
+
+[node name="PostDitherLiftValue" type="Label" parent="DebugDock/DebugPanel/VBox/PostDitherLiftRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(40, 0)
+text = "0.00"
+horizontal_alignment = 2
+
+[node name="PostDitherGammaRow" type="HBoxContainer" parent="DebugDock/DebugPanel/VBox"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="DebugDock/DebugPanel/VBox/PostDitherGammaRow"]
+layout_mode = 2
+text = "Gamma"
+
+[node name="PostDitherGammaSlider" type="HSlider" parent="DebugDock/DebugPanel/VBox/PostDitherGammaRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.2
+max_value = 3.0
+step = 0.05
+value = 1.0
+
+[node name="PostDitherGammaValue" type="Label" parent="DebugDock/DebugPanel/VBox/PostDitherGammaRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(40, 0)
+text = "1.00"
 horizontal_alignment = 2
 
 [node name="MainMenu" type="ColorRect" parent="."]

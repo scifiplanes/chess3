@@ -15,13 +15,16 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 [application]
 
 config/name="Chess 3"
-run/main_scene="res://scenes/Main.tscn"
-config/features=PackedStringArray("4.6")
+run/main_scene="res://scenes/MenuFlow.tscn"
+config/features=PackedStringArray("4.7")
 config/icon="res://icon.svg"
 
 [autoload]
 
+GameSettings="*res://src/app/GameSettings.gd"
+MatchSession="*res://src/app/MatchSession.gd"
 Network="*res://src/net/NetworkClient.gd"
+DitherPostProcess="*res://src/presentation/DitherPostProcess.gd"
 
 [display]
 

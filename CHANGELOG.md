@@ -8,6 +8,136 @@ This changelog is intentionally **concise**:
 - Keep entries to the **current milestone** plus a short history.
 
 ## Unreleased
+
+- **Infra**: GitHub repo + Web export preset and Vercel hosting scaffold (`tools/export_web.sh`, COOP/COEP headers).
+- **Test**: Main boot gate (`playtest_main_boot.tscn` / G0) instantiates `Main.tscn` so `Main.gd` parse errors fail CI — Board-only suites no longer hide them.
+- **UX**: CP 3×3 zones brighter (pads/edges/beacon); END **blinks** when no acts left; MOVE/ready abilities highlight when eligible; Slam needs confirm (AoE telegraph → click self / press again); obstacle hits pop HP/`DESTROYED`.
+- **Fix**: organ hit-pop frees living glyph immediately (`_free_organ_node`) — no same-frame corpse+zombie duplicate; shed/dead views free organs immediately; destroyed obstacles erase from board dict.
+- **UX**: mutant floor cue is **team corner brackets** (not a filled disc); ineligible acts telegraph with toast + chip + board pop/flash + warn pulse (`FRESH` / `SPENT` / `ENEMY` / `BLOCKED` / …).
+- **Fix**: settled mushroom debris reacts to ability forces again (was skipped by scale gate + freeze); light chunks loft harder when kicked.
+- **Fix**: organ attach rematches in place (immediate free) — no deferred `queue_free` fake falling duplicates; slot rests spaced + softer depth jiggle.
+- **UX**: gear/egg graft celebrated — destination telegraph, `GRAFT` pop, burst/sparks, mutant mint punch.
+- **Fix**: demo **Menu** leaves immediately to menu scene; VFX warmup no longer fires a boot splat; LOCKED hover pop once per egress cell.
+- **UX**: unusable dropped organs are **grayed** — corpses + non-reclaimable / hard-max gear (and eggs when selected mutant is full) no longer read as loot.
+- **Fix (board UX)**: team floor disc toned down (idle α**0.10**/r**0.26**); availability/fresh rings softened; mutant rim/tint no longer washes white; HP pip cubes use **team color**; board clicks raycast **floor only** (occupied-slot attach no longer reject-then-accept); attach no longer kicks a fake corpse when core sinks to back; **core/brood/anchor/curses** do not drop as reclaimable gear; gear drops spiral-search free cells; eggs are opaque balls (no peek); gear is **emoji only** (no ball).
+- **Fix**: mushrooms visible again — silhouette dimming had driven modulate α below Sprite3D alpha-cut scissor (every pixel discarded); scissor lowered, idle α ~**0.72**.
+- **Stage-2 fixer (UX nits)**: orphan clay backplates hide with host; debug `…` is a tiny flat chip (not a mud plaque); squad inspect title = stack emojis when selected; demo tempo uses VSYNC filled/outline pills; cartridge face shows verb-only blurb above pips; hero mushrooms dim harder on selection.
+- **Stage-2 fixer (UX nits)**: hide gear/egg orbs during turn-1/2 offer until seat has a Mutant; brighter amber **LOCK** egress + `LOCKED` pop/hover chip; ZONES gems show **P1/P2** seat labels.
+- **HUD**: wet-mud path A depth — canvas extrude rim + contact shadow, deeper stamp wells, embossed captions, chunkier extruded ZONES gems.
+
+- **HUD**: majority gems say **ZONES** `owned/need` (not CP); phase plaque shows **OFFER**/**ACTION** (not PHASE 1/2). Board beacons keep CP language.
+- **Board**: spawn pads, CP zone edges, and selection rings use **beveled squares** (match the square grid) instead of hex prisms.
+- **Stage-2 fixer (UX/GP last-mile)**: gear/egg board markers larger + taller CRT orbs (blue gear / green egg / red curse); first post-opening 1-of-3 toast “Later offers: pick 1 gene — specialty unlocked.”; Settings FULLSCREEN/VSYNC filled pill ON / outline OFF.
+- **HUD**: seat split restored — CP gems team-tinted clay (ochre vs cyan) + numbers in seat accent; board M-tags use owner color (not shared amber).
+- **HUD**: wet-mud clay — pixel-stable grain + **pixel corner radius** (no UV stretch); dark low-contrast slabs; clay shader on backplate only so type stays light + outlined.
+- **HUD**: wet-mud clay chrome — pixel-stable (non-stretching) clay grain; dark low-contrast slabs + light type for readability; press **0.96**.
+- **HUD**: restyle K1 chrome to **wet-mud clay** — `wet_clay_canvas` / `wet_clay_spatial` shaders, fingerprint+bevel+wet sheen, clay gene cartridges / CP hexes / MOVE·END keys (press **0.96**); clearing offer restores action bar.
+- **Stage-2 fixer (L19)**: idle Mutant glance — scale **2.2×**, floor disc α**1.0**/r**0.95** + subtle idle breath; mushrooms idle α**≤0.25** (heroes dimmer with no selection); main CRT **emoji mutant ghost**; DemoAI control soft **4** / dual gland / max **3** / CP sit; balanced soft **4** / max **2** / no field-graft; rush close after turn **>10** (RR all styles **4–6**).
+- **Stage-2 fixer (L18)**: idle Mutant glance — scale **2.05×**, floor disc α**≥0.95**/r**≥0.85**/emit**2.4**, always-on rim maxed; mushrooms idle α**≤0.32** (heroes dimmer); opening prompt **one line** (leave-lock on first-egress toast only); DemoAI tank soft **5** / peel **7** / charge after turn **>3**, rush soft **2** / max **1** body / close after turn **>8** (RR tank≥4, rush≤6).
+- **Stage-2 fixer (L17)**: idle Mutant glance — scale **1.9×**, floor disc α**0.92**/r**0.76**/emit**2.0**, always-on rim mix **1.0**; mushrooms idle α**≤0.40**; gear/egg orbs dimmer/smaller (esp. with no selection); opening prompt **Pick 2 · glowing home pad → Mutant** + leave-lock line.
+- **Stage-2 fixer**: control AI soft **3** (was 2) — lift RR control floor without stomping kite/rush.
+- **Stage-2 fixer (L16)**: idle silhouette — floor disc α**0.86**/r**0.72**/emit**1.7**, mutant scale **1.75×**, always-on rim mix **0.95**, mushrooms idle α**0.50**; kite AI one stack / soft **7** / shoot **3–6** / flee ≤**2**.
+- **Stage-2 seat fairness**: even-board CP row nudges toward the second player (`h/2 - seed%2`); 30-match/RR seeds keep parity fixed per style-pair so seat-swap rotates opener (old `match_i*131` made higher-index style always open); tank AI soft **4** / leave-now / peel **6** / charge after turn **>5**.
+- **Stage-2 fixer (L15)**: rush AI soft **3** / max **2** bodies / charge+dash after turn **>6**; mushrooms idle α**0.65**; select prompt **Stack: {emojis}** + ability keys show organ emoji.
+- **UX**: gene cartridges draw metal backgrounds at **69%** opacity (were invisible — `flat` skipped StyleBoxes).
+- **Stage-2 fixer (L14)**: control soft **2** / max **2** bodies / peel ≤2; kite shoot **2–6** / flee ≤1; tank leave at **2** / peel ≤4 / claw-before-shell; idle floor disc α**0.68** + always-on team rim; mushrooms idle α**0.78**.
+- **Stage-2 fixer (L13)**: in-match HUD words (phase/prompt/offer title/gene cartridges/CP) forced to **system sans** (Savage/Jrudge C→`<` on Cardiac/place/pick); opening **Anchor/Brood hard-ban** while teach genes remain; rush AI soft **2** / max **1** body / close after turn **>11**; control soft **3**; CP row **`h/2`** seat nudge; mushrooms **α≤0.45** when selected+moving.
+- **Stage-2 fixer (L12)**: readable/body UI uses **system sans** (Jrudge+Savage C→`<` broke Cardiac/Clear/CP/Scout/CUSTOMIZE); opening hand hard-biases teaching genes + wider specialty exclude; prep rack shows GENE_BLURBS under cartridges; idle floor disc stronger; AI soft lever control**4**/swarm**3**/rush**3**.
+- **Stage-2 fixer (L11)**: selected mutants win glance (larger disc + stronger rim + scale + mushrooms α≤0.55); GENE_BLURBS unified `Verb · detail`; prep rack packs left (no expand holes); select prompt names top ability; CP gems larger permanent `owned/need`.
+- **Stage-2 fixer (L10)**: tank AI plate×3 + soak-to-4 / second body / zone-sit / slam-first / no charge; plate **4 HP** (ORGAN_HP_MAX 4); swarm soft **4**; 30m full pair schedule (was 3 matchups); offer GENE_BLURBS teach Core/Claw/Eye; prep rack even spacing + Jrudge gene names; selected floor disc brighter; mushrooms dim on select; one-shot CP toast “Hold 2 of 3 zones”.
+- **UX**: fullscreen **ordered Bayer dither** post-process (Elfenstein port) over 3D + HUD + menus; F3 Post dither tunables; on by default.
+- **Fix**: post dither uses **BackBufferCopy** + full-rect overlay so the pass actually samples the frame.
+- **Stage-2 fixer (L9)**: title one short line; leave-lock teaching on opening prompt / egress only; hide idle spawn pads in move; GENE_BLURBS short verb+number (eye r6/2dmg/cd1); opening hand swaps mine/teleport/beacon for simpler genes; tank/control soft lift (control soft **6**, peel **3**).
+- **Stage-2 fixer (L8)**: mutant **team floor disc** (larger when selected); gene blurbs plain English (eye r6/d2/cd1; no Air/Blink/SHIP); prep **rack visible by default**, CLEAR as text link; leave-lock **amber egress** + louder toast until first lock; rush AI soft **2** / close after turn **>9**.
+- **Stage-2 fixer (L7)**: kite AI shoots at **3–6** (flee ≤2) + railgun + CP contest; rush soft **3** and no charge/dash until turn **>7**; opening spawn pads **pulse mint**, CP gold demoted until active seat has a Mutant; mutant **1.62×** + stronger rim; gene cartridges use **GENE_BLURBS** English verbs (no Boom/Blink/Air opacity).
+- **Stage-2 fixer (L6)**: main teaching sentence in **Jrudge**; prep bay hides rack until **Customize**; Skip full-bright when allowed (readable when locked); mutant scale **1.55×** + stronger rim; CP flags **7** (8 solo); control AI spawn-3 + CP sit (RR control5); rush soft **4**.
+- **Stage-2 fixer**: opening (turns 1–2) always **5-card** hand with **core** + combat gene teaching (fixes second-seat 3-card skew); CP row **`(h-1)/2`** for even-board seat fairness; title menu teaching line (no hollow telemetry); move-mode leave-lock toast + quieter atmosphere glitter; kite AI up to **2** bodies / soft **6**; tank up to **3** bodies.
+- **Reddit L4 fixer**: title menu drops fake **SIM STATUS / PHASE·TURN**; opening offer prefers **unique** genes (keeps eye/hoof doubles; else cartridge **×N**); hide debug `…` dock during offers; mutant organs get stronger team rim/tint vs mushrooms; kite AI **one stack** + contests CP when foe >3 away (RR kite≥4).
+- **Reddit L3 fixer**: hide MOVE/END/abilities during gene offer; cartridge face = organ name (Jrudge) + ability subtitle, no ×N on duplicates; prep hint ASCII `-> LOCK` (readable font); CAPACITANCE → **DECK**; CP gems show **n/2** majority progress; kite contests CP when foe >4 away (floor ≥3); menu visual main≠prep (validation focus fix).
+- **Fixer pass**: FAQ **pick 2 of 5** + plain-English leave-lock; opener **seed%2** + both seats open on turns 1–2; rush hunts (soft 5); kite flees ≤3; tank/control soak+hold; snares control-only; prep style blurb + brighter specimen labels.
+- **Fixer pass**: style presets fill **72/72**; rush AI **ram-first** offer priority; opening offer/prompt teaches spawn pads + leave-lock + gear/eggs; menu telemetry dimmed; prep hint larger; tempo selected border; 30-match styles seat-fair.
+- **10/10 loop**: opening hand **2 of 5**; **BALANCED** bay rack slimmed to **8 signature genes** at **72/72**; style pills show selected; first-action tip for spawn-lock vs field graft; offer hover no longer covers gene tray; eye blurb matches r6/d2.
+- **Hot-seat prep**: **loadout bay** (one player, style pills, specimen rack, customize catalog, CAPACITANCE gauge) + optional **gene draft** pack ritual; P1 lock → **pass-device** handoff → P2 → start; tank/swarm presets.
+- **9/10 loop**: gene cartridges show **organ names** (not G-xx); prompt vs hover chips split; ability **cd N** + range/dmg tooltips; opening **n/3**; fresh → END; spawn pads mint; eye **r6 dmg 2 cd 1**; CP **8** flags (9 solo); quieter idle CP pads; move mode drops amber wash; switch cancel + target glow; curse eggs red glow; match-over **elim vs control**; meta green (styles 4–6 wins).
+- **Fix**: field pickups (gear/eggs) sit on the tile top instead of clipping through the floor.
+- **Review pass**: CP capture **7** flags (8 solo mutant); scout eye **range 6, cd 0**; swarm **7+/9+** move tax + damage penalty; kite AI stops CP camping when threatened; rot curse **×2** dmg taken; spawn-lock teaching overlay + inspect POOL/LOCKED; highlight mode-gating; CP zones quieter; preset-first deck prep (**SPENT · CAP 72**); hot-seat pass interstitial; demo commentary one line/turn; fresh spawn **·F** tag; Esc cancels swap pick.
+- **Improvement waves**: fix `Main.gd` compile (`_sync_ui`, typed locals); scene-load CI (`validate_scenes.tscn`); hide action bar during offer; debug dock dev-only; rules overlay uses separate flag; pass banner on CP change only; demo log collapsed + **Log** toggle; fresh spawn blue ring; fair-map pickup duel test.
+- **Fix**: `BoardView.gd` duplicate `_process` parse error (blocked headless visual validate); gameplay validate exits cleanly under `--headless` (sim checks; PNG parity needs display).
+- **UX**: turn-1 tutorial flags; pickup scale/bob + near-spawn gear; demo commentary plain sentences; prompt chip shows live phase text; swarm **7+ organ** move tax; curse eggs **~18%**; gear drop uses adjacent cell when occupied.
+- **UX**: **field-graft feedback** — toast + floating emoji pop on gear/egg pickup; **organs-lock toast** when leaving Spawn Pool; step-by-step **opening hand** prompts (`1/3`); hover chip names gear/eggs + graft range; squad inspect shows **LOCKED** / organ cap.
+- **Board pickups**: **Gear** / **Eggs** field graft; curse organs from eggs; board gear cap **14**; reachable pickup **telegraphs**; Demo AI pickup detours.
+- **UX**: reachable **gear/egg telegraphs** (blue/green/amber) when a selected mutant can field-graft this turn; Demo AI **rush/swarm/balanced** detour for nearby pickups.
+- **UX**: board-first **ability telegraphs** — soft violet reach, amber AoE/line/path on hover, toxin-green trap plant, full delayed-strike footprints; brief resolve cell flash (particles secondary).
+- **Fix**: organ emoji dither uses **UV-stable** Bayer (not screen `FRAGCOORD`) — stops shimmer while jiggling; SubViewport updates once per emoji change; attach adds organs incrementally instead of full rebuild.
+- **Fix**: hit-flash tween no longer touches organ visuals freed by pop/rebuild (was: invalid previously freed instance).
+- **UX**: detached organ corpses tint **warm brown** (dim dead tissue vs living emoji).
+- **Balance**: Scout Eye stays **1** chip at range **5** (2-chip trial reverted).
+- **Balance**: CP capture **8** flags (9 with solo mutant; was 7/8).
+- **Balance**: Snare Gland cooldown **4** (was 3) — slightly fewer roots for control styles.
+- **Balance**: Stride Hoof **Run 3** cells (was 2) — rush/kite reposition faster after leaving spawn pool.
+- **Demo AI**: **rush** stops at **3** organs, contests enemy-held CP even when close, **eye** in top-5 genes; **kite** contests CP while in ranged band (3–5).
+- **Organs**: full **21-gene biotech roster** — every Chess-2 ability mapped (move/run/dash/slam/charge/delayed strikes/railgun/jump/pounce/switch/blink/mines/snare/logistics/FOB/plate/chunk + core/claw/eye).
+- **Movement**: basic **Move 1** cell; **+1 in Spawn Pool** (egress); Sand **+1** while standing on sand (stacks).
+- **Balance**: CP capture **7** flags (6 with solo mutant); **Graft Plate 3 HP** (was 2).
+- **Combat pacing**: lowered per-hit chip counts (core melee **1**, claw **2**, eye ranged **1**, slam **1** AOE; mines/traps toned down) so large Mutants take multiple exchanges to kill.
+- **Fix**: logistics/FOB spawns outside the home band now spawn **attach-locked**; trap plant range uses **Chebyshev 1** (diagonal adjacency); debris burst capped at **64** pieces.
+- **UX**: larger Mutants (organ billboards scaled up); detached organ corpses use emoji-only visuals (no gray sphere); debris/corpses **persist** on the battlefield.
+- **Rules**: **Turn 1 opening hand** — 5 genes offered, place **3** before action phase; later turns stay pick-1-of-3.
+- **UX**: gene cartridges highlight during placement (playable mint ring, selected amber); show **ability name** on each card + hover tooltip; center **hover info chip** restored.
+- **UX**: CP capture zones use **gold/amber** tint (distinct from **cyan** move reach).
+- **Board**: control points spaced **±5** cells from center (was ±2).
+- **UI**: ship font **Savage** for all HUD/menu chrome (retired Jrudge dev font).
+- **UX**: organ separation triggers **Chillout-style knockout sweep** (slow-mo orbit chase + zoom, ~3s wall clock).
+- **Demo**: spectator camera **frames AI action cells** after each step; play-rect accounts for demo overlay chrome; **commentary log** narrates spawns, moves, combat, and match events.
+- **UX**: organ separation (corpse shed) triggers slow-mo camera sweep.
+- **UX**: organs on right-side limb slots (`arm_r`, `leg_r`) mirror horizontally for symmetrical silhouettes.
+- **Menu**: CRT-era main menu (rounded amber terminal — **no** barrel distortion / scanlines): Hot-seat deck prep, Demo AI loop, Settings, Exit; boot via `MenuFlow.tscn` (`--match` skips to match).
+- **Menu polish**: layouts aligned to CRT concept art — full-viewport bezel, corner HUD readouts, board backdrop, outlined menu pills, split deck prep panels, dotted sliders, segmented tempo bar.
+- **Rules**: CP capture zone is **3×3** (CP cell + 8 neighbors); all zone cells telegraphed on board.
+- **Design**: menu concepts revised to **rounded CRT-era** terminal (amber phosphor, curved bezel — **no** barrel/scanlines in build) — `docs/menu-concepts/`.
+- **Rules**: offline match start has **zero seed squads** — both players spawn their first Mutants from gene offers only.
+- **UX**: Mutants **yaw toward the camera** (organ cluster rotation); emoji dither shader must not use invalid billboard render modes (broke organ textures → gray planes in 4.6).
+- **Rules**: gene offer is **pick 1 of 3** on turns 2+ (or Skip); turn 1 uses the 5-hand / 3-place opening.
+- **UX**: Mutants with remaining move/action get a clearer **available-turn** telegraph (amber cell tint, larger pulse rings, brighter track tag).
+- **UX**: pending gene highlights **attach-eligible** Mutants (mint cell + pulse rings) in spawn or attach mode.
+- **UX**: Control Points show a full-cell **occupy pad**, hex footprint/halo, flag meters with empty slots, and a billboard state label (`NEUTRAL` / `HELD` / flag progress / `CONTESTED`).
+- **Balance**: eye `ranged` is range **4** / cooldown **1** (kite plan).
+- **Rules**: CP flags only while **in the CP zone** (3×3 — was center-only briefly); solo armies need **+1** flag to capture.
+- **UX**: wipe/CP win shows **MATCH OVER — P#** immediately (banner + toast); inputs stay locked.
+- **Balance**: CP capture needs **5** flags (was 3) so 1v1 matches last longer and combat matters more vs instant CP snowballs.
+- **Test**: kite playtest no longer assumes a 2-organ enemy survives a 2-dmg ranged shot (winner lockout mid-turn is intentional).
+- **Playtest**: added `tools/playtest_30_matches.gd` — 30 full human-style 1v1 matches (offer → act → end turn).
+- **UX**: organ destruction fires a larger **yellow-amber particle splatter** + lasting **floor splat decal**.
+- **UX**: each board seeds **4–6 hero props** from a pool (giant mushrooms, organic blobs, old rocks) as large landmark blockers.
+- **UX fix**: mutant organ rests rebalanced — nested humanoid again, not stacked/overlapping.
+- **Fix**: ragdoll timer races (double hit / rebuild / move), AOE force no longer unfreezes living organs without reseat, hit-flash no longer double-ragdolls after CombatJuice; charge juice uses pre-move origin.
+- **UX**: heavy-ability debris uses small **cut mushroom-matter** billboard chunks (cap wedges / stem rings / flesh bits), not 3D cubes.
+- **UX**: Mutants are **jointed organ ragdolls** on hit (brief flop, then re-seat to cell); abilities shove loose bodies; heavy abilities spawn **debris**; board gets **light shaft** + reactive dust/clouds, **contact shadows**, and pooled impact bursts/sparks.
+- **UX**: HUD controls get **amber hover** feedback; UI hover **clears board/organ hover** (chrome trays block the pointer).
+- **UX**: organ emojis use **Bayer dither** (F3: enable / strength / levels); humanoid layout is **connected** (tight nested rests, not cell-wide scatter).
+- **UX fix**: mushroom **yaw frames follow camera rotation** (nearest authored angle + horizontal flip), not a one-time random pick.
+- **Debug**: spawn a **random multi-organ mutant** (3–6 organs, free cell near center) from the F3 debug panel.
+- **UX fix**: camera pan/zoom/rotate **clamped to the playfield** (zoomed-out pans can no longer lose the board; zoom-out capped near board-fit).
+- **UX**: fungal terrain/spawn tiles **darkened** (lower contrast, less noise); mushrooms gain **yaw-angle sprite variants** (18 total).
+- **UX**: terrain uses **mushroom/mycelium** tile textures (soil / rock / sand); spawn pools get **slime-mold vein** pads instead of plain hex inlays.
+- **UX**: board obstacles are **weird mushroom** alpha sprites (6 variants) instead of grey cubes; destructible ones get a warmer tint.
+- **UX**: gene **offer** cartridges use the **same organ emoji** as board mutants; vector glyphs move to **MOVE / END / ability** keys.
+- **UX**: **K1 HUD** parity pass — hex CP gems, floating metal gene cartridges (vector glyphs), engraved phase plaque (`PHASE n / TURN ##`), beveled MOVE/END with pip lights; bone/slate checkered board + dark void; hex track rings; spawn markers de-neoned.
+- **UX**: **K1 HUD** — board-first floating chrome (phase plaque, twin CP pips, gene cartridge tray, MOVE/END keys); amber `M-##` track tags on mutants; full-width bars removed.
+- **UX**: Mutant **move hop** tween; **hover** jiggles the hovered organ; destroyed organs **gray out**, detach, and tumble as floor physics corpses.
+- **UX fix**: dropped organ corpses no longer sink into the voxel floor (collision raised to tile tops; spawn/settle height clamped).
+- **Rules fix**: cannot **plant** a hazard on a cell that already has one (no overwrite of enemy mines/snares).
+- **Rules**: on attach, **core** sinks to the **back** of the organ stack (dies last); specialty organs soak damage first.
+- **UX**: combat preview shows which organ emojis will **pop** / remain; front-of-stack organ uses a warm outline cue.
+- **Rules**: orphan ability cooldowns are pruned after organs pop.
+- **Rules fix**: stepping on your **own** snare/mine no longer removes it (only enemies trigger and consume hazards).
+- **Chess 3 fork**: Mutants built from **Organs** (1 HP each); **gene pool** offers; attach only in **Spawn Pool** until the Mutant leaves (then locked); ability **union** from all organs; soft ceiling 6 / hard max 10; emoji humanoid layout with jiggle.
+- **UX fix**: CP cells no longer show yellow “reinforcement” rings (attach is Spawn Pool only).
+- **UX fix**: hit flash restores owner tint after the flash (no permanent white organs).
+- **UX**: selected Mutant / combat preview copy says **organs** instead of HP.
+- **Rules**: gene offer can spend **multiple cards** in one offer phase (Skip ends it); duplicate abilities use the **strongest** organ def; spawn bands get a **1-row obstacle-free egress**.
+- **Rules fix**: only genes **in the current offer** can be spawned/attached; **End Turn** blocked while offer pending; empty offer slots disabled.
+- **Rules fix**: spawn/attach require **inventory > 0**; unplayable leftover offer cards are **pruned** after each gene play.
 - **UX**: selecting a squad auto-enters **Move** when that squad still has its basic Move available.
 - **UX**: active squads pulse with a **cyan** ring when basic Move remains and an **amber** ring when any ability is off cooldown; **End Turn** highlights when none remain.
 - **Rules**: basic **Move is once per squad per turn** (movement abilities still cooldown-gated).

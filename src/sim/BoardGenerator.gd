@@ -4,6 +4,7 @@ class_name BoardGenerator
 const BoardStateScript = preload("res://src/sim/BoardState.gd")
 const ControlPointStateScript = preload("res://src/sim/ControlPointState.gd")
 const RulesScript = preload("res://src/sim/Rules.gd")
+const UnitDefsScript = preload("res://src/sim/UnitDefs.gd")
 
 func generate(board, seed: int) -> void:
 	# Deterministic generation for a given seed.
@@ -14,28 +15,128 @@ func generate(board, seed: int) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = int(seed)
 
-	_seed_control_points(board)
+	_seed_control_points(board, int(seed))
 	_seed_terrain(board, rng)
 	_seed_obstacles(board, rng)
 	_ensure_playability_guarantees(board, rng)
+	_seed_hero_props(board, rng)
+	_seed_pickups(board, rng)
 
-func _seed_control_points(board) -> void:
+func _seed_pickups(board, rng: RandomNumberGenerator) -> void:
+	board.gear.clear()
+	board.eggs.clear()
+	var center := Vector2i(int(floor(board.size.x / 2.0)), int(floor(board.size.y / 2.0)))
+	var start_rows := int(RulesScript.HOME_SPAWN_ROWS) + int(RulesScript.SPAWN_EGRESS_ROWS)
+	var candidates: Array[Vector2i] = []
+	for y in range(board.size.y):
+		for x in range(board.size.x):
+			var cell := Vector2i(x, y)
+			if _is_obstacle_excluded(board, cell, center, start_rows):
+				continue
+			if board.is_blocked(cell):
+				continue
+			candidates.append(cell)
+	_shuffle_cells(candidates, rng)
+
+	var gear_pool := UnitDefsScript.gear_spawn_pool()
+	var egg_pool := UnitDefsScript.egg_spawn_pool()
+	var gear_want := rng.randi_range(3, 5)
+	var egg_want := rng.randi_range(2, 4)
+	var placed: Array[Vector2i] = []
+
+	for i in range(candidates.size()):
+		if gear_want <= 0 and egg_want <= 0:
+			break
+		var cell := candidates[i]
+		if _hero_too_close(cell, placed, 2):
+			continue
+		if gear_want > 0 and (egg_want <= 0 or rng.randf() < 0.55):
+			var gid := str(gear_pool[rng.randi_range(0, gear_pool.size() - 1)])
+			board.set_gear(cell, gid, false)
+			gear_want -= 1
+		elif egg_want > 0:
+			var curse_pool: Array[String] = []
+			var normal_pool: Array[String] = []
+			for eid in egg_pool:
+				if UnitDefsScript.is_curse_organ(str(eid)):
+					curse_pool.append(str(eid))
+				else:
+					normal_pool.append(str(eid))
+			var eid := ""
+			if not normal_pool.is_empty() and (curse_pool.is_empty() or rng.randf() >= 0.12):
+				eid = normal_pool[rng.randi_range(0, normal_pool.size() - 1)]
+			elif not curse_pool.is_empty():
+				eid = curse_pool[rng.randi_range(0, curse_pool.size() - 1)]
+			elif not normal_pool.is_empty():
+				eid = normal_pool[rng.randi_range(0, normal_pool.size() - 1)]
+			if eid != "":
+				board.set_egg(cell, eid, false)
+				egg_want -= 1
+		else:
+			var gid2 := str(gear_pool[rng.randi_range(0, gear_pool.size() - 1)])
+			board.set_gear(cell, gid2, false)
+			gear_want -= 1
+		placed.append(cell)
+
+	_guarantee_near_spawn_gear(board, rng, gear_pool, placed)
+
+func _guarantee_near_spawn_gear(board, rng: RandomNumberGenerator, gear_pool: Array, placed: Array) -> void:
+	var anchors: Array[Vector2i] = [
+		Vector2i(2, 1),
+		Vector2i(board.size.x - 3, board.size.y - 2),
+		Vector2i(int(floor(board.size.x / 2.0)), 1),
+		Vector2i(int(floor(board.size.x / 2.0)), board.size.y - 2),
+	]
+	var added := 0
+	for anchor in anchors:
+		if added >= 2:
+			break
+		var has_near := false
+		for c in placed:
+			if absi(c.x - anchor.x) + absi(c.y - anchor.y) <= 5 and board.gear.has(c):
+				has_near = true
+				break
+		if has_near:
+			continue
+		var candidates: Array[Vector2i] = []
+		for dy in range(-5, 6):
+			for dx in range(-5, 6):
+				if absi(dx) + absi(dy) > 5:
+					continue
+				var cell := Vector2i(anchor.x + dx, anchor.y + dy)
+				if not board.in_bounds(cell) or board.is_blocked(cell):
+					continue
+				if board.gear.has(cell) or board.eggs.has(cell):
+					continue
+				candidates.append(cell)
+		if candidates.is_empty():
+			continue
+		var pick: Vector2i = candidates[rng.randi_range(0, candidates.size() - 1)]
+		var gid := str(gear_pool[rng.randi_range(0, gear_pool.size() - 1)])
+		board.set_gear(pick, gid, false)
+		placed.append(pick)
+		added += 1
+
+func _seed_control_points(board, seed: int = 0) -> void:
 	board.control_points.clear()
 	board.reinforcement_areas.clear()
 	var cx := int(floor(board.size.x / 2.0))
-	var cy := int(floor(board.size.y / 2.0))
-	# Deterministic MVP CP placement: center + two symmetric points along x.
+	# Even boards: no true mid-row. Nudge CP one step toward the second player
+	# so seed%2 first-player tempo cancels the shorter home→CP path.
+	var h := int(board.size.y)
+	var cy := int(h / 2)
+	if (h % 2) == 0:
+		cy = cy - (absi(int(seed)) % 2)
 	var cp_cells := [
 		Vector2i(cx, cy),
-		Vector2i(maxi(0, cx - 2), cy),
-		Vector2i(mini(board.size.x - 1, cx + 2), cy),
+		Vector2i(maxi(0, cx - 5), cy),
+		Vector2i(mini(board.size.x - 1, cx + 5), cy),
 	]
 	for c in cp_cells:
 		board.control_points.append(ControlPointStateScript.new(c))
-		# MVP reinforcement areas: CP cells.
-		board.reinforcement_areas.append(c)
+		# Chess 3: CPs are win objectives, not organ-attach zones.
 
-	# Reinforcement can also happen in each player's home/deployment bands (same rows as spawn cells).
+	# Attach / Spawn Pool markers: home deployment bands only.
 	_append_home_band_reinforcement_areas(board)
 
 func _ra_has_cell(board, cell: Vector2i) -> bool:
@@ -76,17 +177,112 @@ func _seed_terrain(board, rng: RandomNumberGenerator) -> void:
 				t = int(BoardStateScript.TERRAIN_SAND)
 			board.set_terrain(Vector2i(x, y), t)
 
+func _hero_prop_hp(kind: String) -> int:
+	match kind:
+		"rock":
+			return 10
+		"blob":
+			return 5
+		"mushroom":
+			return 8
+		_:
+			return 6
+
+func _seed_hero_props(board, rng: RandomNumberGenerator) -> void:
+	# Handful of large landmarks per board, sampled from a bigger art pool.
+	# Mushrooms upgrade existing blockers; blobs/rocks may add solid blockers.
+	board.hero_props.clear()
+	var pool: Array = []
+	for i in range(6):
+		pool.append({"kind": "mushroom", "variant": i})
+	for i in range(1, 5):
+		pool.append({"kind": "blob", "variant": i})
+	for i in range(1, 5):
+		pool.append({"kind": "rock", "variant": i})
+	# Shuffle pool.
+	for i in range(pool.size() - 1, 0, -1):
+		var j := rng.randi_range(0, i)
+		var tmp = pool[i]
+		pool[i] = pool[j]
+		pool[j] = tmp
+
+	var want := rng.randi_range(4, 6)
+	var placed_cells: Array[Vector2i] = []
+	var center := Vector2i(int(floor(board.size.x / 2.0)), int(floor(board.size.y / 2.0)))
+	var start_rows := int(RulesScript.HOME_SPAWN_ROWS) + int(RulesScript.SPAWN_EGRESS_ROWS)
+
+	var mush_cands: Array[Vector2i] = []
+	var free_cands: Array[Vector2i] = []
+	for y in range(board.size.y):
+		for x in range(board.size.x):
+			var cell := Vector2i(x, y)
+			if _is_obstacle_excluded(board, cell, center, start_rows):
+				continue
+			if board.obstacles.has(cell):
+				if not board.is_destructible(cell):
+					mush_cands.append(cell)
+			else:
+				free_cands.append(cell)
+	_shuffle_cells(mush_cands, rng)
+	_shuffle_cells(free_cands, rng)
+
+	for entry_any in pool:
+		if placed_cells.size() >= want:
+			break
+		var entry: Dictionary = entry_any
+		var kind := str(entry.get("kind", ""))
+		var variant := int(entry.get("variant", 0))
+		var cell := Vector2i(-1, -1)
+		if kind == "mushroom":
+			while not mush_cands.is_empty():
+				var c: Vector2i = mush_cands.pop_back()
+				if _hero_too_close(c, placed_cells, 3):
+					continue
+				cell = c
+				break
+		else:
+			while not free_cands.is_empty():
+				var c2: Vector2i = free_cands.pop_back()
+				if _hero_too_close(c2, placed_cells, 3):
+					continue
+				cell = c2
+				break
+			if cell.x < 0:
+				# Fallback: claim a non-destructible mushroom cell as rock/blob art.
+				while not mush_cands.is_empty():
+					var c3: Vector2i = mush_cands.pop_back()
+					if _hero_too_close(c3, placed_cells, 3):
+						continue
+					cell = c3
+					break
+		if cell.x < 0:
+			continue
+		var hp := _hero_prop_hp(kind)
+		board.obstacles[cell] = {"hp": hp, "destructible": true, "prop_kind": kind}
+		board.hero_props.append({
+			"cell": cell,
+			"kind": kind,
+			"variant": variant,
+		})
+		placed_cells.append(cell)
+
+func _hero_too_close(cell: Vector2i, placed: Array[Vector2i], min_manhattan: int) -> bool:
+	for p in placed:
+		if _manhattan(cell, p) < min_manhattan:
+			return true
+	return false
+
 func _seed_obstacles(board, rng: RandomNumberGenerator) -> void:
 	board.obstacles.clear()
+	board.hero_props.clear()
 
 	var total_cells: int = int(board.size.x) * int(board.size.y)
 	var target_count: int = int(round(float(total_cells) * 0.12))
 
 	var center := Vector2i(int(floor(board.size.x / 2.0)), int(floor(board.size.y / 2.0)))
 
-	# Start zones (MVP): top/bottom HOME_SPAWN_ROWS rows (see Rules).
-	# Obstacles are excluded from these rows for initial placements.
-	var start_rows := int(RulesScript.HOME_SPAWN_ROWS)
+	# Start zones + egress buffer: keep Spawn Pool and one row beyond clear for exits.
+	var start_rows := int(RulesScript.HOME_SPAWN_ROWS) + int(RulesScript.SPAWN_EGRESS_ROWS)
 
 	var candidates: Array[Vector2i] = []
 	for y in range(board.size.y):
@@ -144,7 +340,10 @@ func _ensure_playability_guarantees(board, rng: RandomNumberGenerator) -> void:
 		return
 
 	var start_rows := int(RulesScript.HOME_SPAWN_ROWS)
-	var cy := int(floor(board.size.y / 2.0))
+	# Match lanes to the actual CP row (seed-nudged on even boards).
+	var cy := int(h / 2)
+	if not board.control_points.is_empty():
+		cy = int(board.control_points[0].cell.y)
 	var lane_cols := _pick_lane_columns(board, rng)
 
 	# Carve two lanes so both players have a corridor toward the CP row.

@@ -23,6 +23,8 @@ const GameStateScript = preload("res://src/sim/GameState.gd")
 # with zoom-in so max-zoom pan keeps usable slack without clamp fighting every drag.
 @export var board_clamp_outset_world: float = 1.15
 @export var board_clamp_outset_full_by_zoom_end_size: float = 0.0 ## 0 = derive from min_ortho_size * 2.25
+## How far past a snug board-fit the player may zoom out (1.0 = no extra zoom-out).
+@export var max_zoom_out_over_fit: float = 1.18
 
 @onready var cam: Camera3D = $Camera3D
 
@@ -50,6 +52,147 @@ const _CELL_SIZE := 1.0
 var _orbit_enabled: bool = false
 var _orbit_pivot: Vector3 = Vector3.ZERO
 
+var _cinematic_active: bool = false
+var _saved_time_scale: float = 1.0
+var _demo_focus_tween: Tween
+
+# Chillout-style knockout replay (organ shed / death).
+const _KNOCKOUT_HANDOFF_FRAC := 0.12
+const _KNOCKOUT_YAW_SWAY := deg_to_rad(16.0)
+var _knockout_running: bool = false
+var _knockout_elapsed: float = 0.0
+var _knockout_duration: float = 3.2
+var _knockout_orbit_end: float = 2.8
+var _knockout_focus: Vector3 = Vector3.ZERO
+var _knockout_subject: Node3D
+var _knockout_rest_pos: Vector3 = Vector3.ZERO
+var _knockout_rest_yaw: float = 0.0
+var _knockout_rest_size: float = 14.0
+var _knockout_handoff_from_pos: Vector3 = Vector3.ZERO
+var _knockout_handoff_yaw: float = 0.0
+var _knockout_handoff_size: float = 14.0
+var _knockout_yaw_sign: float = 1.0
+var _knockout_intensity: float = 1.0
+var _knockout_handoff_captured: bool = false
+var _framing_override: bool = false
+
+func is_cinematic_active() -> bool:
+	return _cinematic_active
+
+## Slow-mo orbit chase on organ separation (Chillout exceptional-replay grammar).
+func play_separation_sweep(focus_world: Vector3, intensity: float = 1.0, subject: Node3D = null) -> void:
+	if cam == null or _knockout_running:
+		return
+	intensity = clampf(intensity, 0.35, 1.0)
+	if _demo_focus_tween != null and _demo_focus_tween.is_valid():
+		_demo_focus_tween.kill()
+	_knockout_running = true
+	_cinematic_active = true
+	_knockout_intensity = intensity
+	_knockout_subject = subject
+	_knockout_focus = focus_world
+	_knockout_rest_pos = global_position
+	_knockout_rest_yaw = rotation.y
+	_knockout_rest_size = cam.size
+	_knockout_duration = lerpf(2.8, 3.9, intensity)
+	_knockout_orbit_end = _knockout_duration * (1.0 - _KNOCKOUT_HANDOFF_FRAC)
+	_knockout_elapsed = 0.0
+	_knockout_yaw_sign = 1.0 if randf() < 0.5 else -1.0
+	_knockout_handoff_captured = false
+	_saved_time_scale = Engine.time_scale
+	Engine.time_scale = lerpf(0.14, 0.08, intensity)
+	set_process(true)
+
+## Demo spectator: pan + zoom so the action cell(s) sit in the play rect (not board void).
+func focus_demo_action(focus_world: Vector3, tightness: float = 0.78) -> void:
+	if cam == null or _cinematic_active or _knockout_running:
+		return
+	tightness = clampf(tightness, 0.35, 0.85)
+	if _demo_focus_tween != null and _demo_focus_tween.is_valid():
+		_demo_focus_tween.kill()
+	var start_pos := global_position
+	var start_yaw := rotation.y
+	var start_size := cam.size
+	var target_size := clampf(start_size * lerpf(0.82, 0.42, tightness), min_ortho_size, start_size)
+	var target_yaw := start_yaw + deg_to_rad(lerpf(-4.0, 4.0, tightness)) * (1.0 if randf() < 0.5 else -1.0)
+	rotation.y = target_yaw
+	_pan_world_to_play_center(focus_world)
+	var target_pos := global_position
+	global_position = start_pos
+	rotation.y = start_yaw
+	_demo_focus_tween = create_tween()
+	_demo_focus_tween.set_parallel(true)
+	_demo_focus_tween.tween_property(self, "global_position", target_pos, 0.52)\
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	_demo_focus_tween.tween_property(self, "rotation:y", target_yaw, 0.52)\
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	_demo_focus_tween.tween_property(cam, "size", target_size, 0.52)\
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	_demo_focus_tween.finished.connect(func() -> void:
+		_framing_override = false
+		_clamp_pivot_to_board()
+	, CONNECT_ONE_SHOT)
+	_framing_override = true
+
+func _pan_world_to_play_center(world: Vector3) -> void:
+	var vp := get_viewport()
+	if vp == null or cam == null:
+		return
+	const MAX_IT := 10
+	const EPS := 2.5
+	for _it in MAX_IT:
+		var play_rect := _safe_play_rect()
+		if play_rect.size.x <= 1.0 or play_rect.size.y <= 1.0:
+			return
+		var screen_center := play_rect.position + play_rect.size * 0.5
+		var world_screen := cam.unproject_position(world)
+		var delta_px := screen_center - world_screen
+		if delta_px.length() <= EPS:
+			break
+		_pan_by_pixels(delta_px, world_screen, false)
+
+func _knockout_focus_now() -> Vector3:
+	if _knockout_subject != null and is_instance_valid(_knockout_subject):
+		return _knockout_subject.global_position + Vector3(0.0, 0.45, 0.0)
+	return _knockout_focus
+
+func _apply_knockout_pose(t: float) -> void:
+	if cam == null:
+		return
+	var focus := _knockout_focus_now()
+	if t < _knockout_orbit_end:
+		var ratio := clampf(t / maxf(_knockout_orbit_end, 0.0001), 0.0, 1.0)
+		ratio = smoothstep(0.0, 1.0, ratio)
+		var zoom_mul := lerpf(0.72, 0.38, ratio * _knockout_intensity)
+		cam.size = clampf(_knockout_rest_size * zoom_mul, min_ortho_size, _knockout_rest_size)
+		rotation.y = _knockout_rest_yaw + _knockout_yaw_sign * lerpf(
+			-_KNOCKOUT_YAW_SWAY, _KNOCKOUT_YAW_SWAY, ratio
+		)
+		_pan_world_to_play_center(focus)
+		return
+	if not _knockout_handoff_captured:
+		_knockout_handoff_captured = true
+		_knockout_handoff_from_pos = global_position
+		_knockout_handoff_yaw = rotation.y
+		_knockout_handoff_size = cam.size
+	var handoff_span := maxf(_knockout_duration - _knockout_orbit_end, 0.0001)
+	var blend := clampf((t - _knockout_orbit_end) / handoff_span, 0.0, 1.0)
+	blend = smoothstep(0.0, 1.0, blend)
+	global_position = _knockout_handoff_from_pos.lerp(_knockout_rest_pos, blend)
+	rotation.y = lerpf(_knockout_handoff_yaw, _knockout_rest_yaw, blend)
+	cam.size = lerpf(_knockout_handoff_size, _knockout_rest_size, blend)
+
+func _finish_knockout() -> void:
+	_knockout_running = false
+	_cinematic_active = false
+	_knockout_subject = null
+	Engine.time_scale = _saved_time_scale
+	global_position = _knockout_rest_pos
+	rotation.y = _knockout_rest_yaw
+	if cam != null:
+		cam.size = _knockout_rest_size
+	_clamp_pivot_to_board()
+
 func is_rotating() -> bool:
 	return _rotating
 
@@ -57,6 +200,11 @@ func is_interacting() -> bool:
 	return _rotating or _panning
 
 func _ready() -> void:
+	var settings := get_node_or_null("/root/GameSettings")
+	if settings != null:
+		pan_speed *= float(settings.camera_pan_sensitivity)
+		zoom_speed_wheel *= float(settings.camera_zoom_sensitivity)
+		zoom_speed_pinch *= float(settings.camera_zoom_sensitivity)
 	add_to_group("camera_controller")
 	set_process(true)
 	call_deferred("_late_init")
@@ -116,9 +264,9 @@ func _fit_zoom_to_board() -> void:
 	var padding: float = 1.06
 	var desired: float = max(required_half_h, required_half_w) * padding
 
-	# Ensure exported max is large enough so startup can actually frame the board.
-	if desired > max_ortho_size:
-		max_ortho_size = desired
+	# Cap zoom-out so the board cannot shrink to a speck and be panned into the void.
+	var zoom_out_cap: float = desired * maxf(1.0, max_zoom_out_over_fit)
+	max_ortho_size = maxf(desired, zoom_out_cap)
 
 	cam.size = clamp(desired, min_ortho_size, max_ortho_size)
 
@@ -170,6 +318,7 @@ func _safe_play_rect() -> Rect2:
 	var top_h := 0.0
 	var bottom_h := 0.0
 	var right_w := 0.0
+	var left_w := 0.0
 
 	var top := hud.get_node_or_null("TopBar")
 	if top is Control and (top as Control).visible:
@@ -184,9 +333,23 @@ func _safe_play_rect() -> Rect2:
 	var right := hud.get_node_or_null("SquadInspectPanel")
 	if right is Control and (right as Control).visible:
 		var r3 := (right as Control).get_global_rect()
-		right_w = max(right_w, (vr.end.x - r3.position.x))
+		# Inspect is a small left chip in K1 — don't carve the whole right gutter.
+		if r3.position.x > vr.size.x * 0.55:
+			right_w = max(right_w, (vr.end.x - r3.position.x))
 
-	var x0 := vr.position.x
+	var demo := hud.get_node_or_null("DemoOverlay")
+	if demo is Control and (demo as Control).visible:
+		for child in (demo as Control).get_children():
+			if child is Control and (child as Control).visible:
+				var dr := (child as Control).get_global_rect()
+				if dr.end.y <= vr.position.y + vr.size.y * 0.45:
+					top_h = max(top_h, dr.end.y - vr.position.y)
+				elif dr.position.y >= vr.position.y + vr.size.y * 0.55:
+					bottom_h = max(bottom_h, vr.end.y - dr.position.y)
+				elif child.name == "CommentaryLog":
+					left_w = max(left_w, dr.end.x - vr.position.x)
+
+	var x0 := vr.position.x + left_w
 	var y0 := vr.position.y + top_h
 	var x1 := vr.end.x - right_w
 	var y1 := vr.end.y - bottom_h
@@ -202,6 +365,13 @@ func _default_zoom_anchor_screen() -> Vector2:
 	return r.position + r.size * 0.5
 
 func _process(_delta: float) -> void:
+	if _knockout_running:
+		var wall_delta := _delta / maxf(Engine.time_scale, 0.001)
+		_knockout_elapsed += wall_delta
+		_apply_knockout_pose(_knockout_elapsed)
+		if _knockout_elapsed >= _knockout_duration:
+			_finish_knockout()
+		return
 	# Start hold-rotate even if the user hasn't moved yet.
 	if _pressing and (not _rotating):
 		if Time.get_ticks_msec() - _press_time_ms >= hold_to_rotate_ms:
@@ -365,6 +535,7 @@ func _apply_rotate_dx(dx: float) -> void:
 		var off := global_position - _orbit_pivot
 		off = off.rotated(Vector3.UP, -delta_yaw)
 		global_position = _orbit_pivot + off
+	_clamp_pivot_to_board()
 
 func _end_rotate(snap: bool) -> void:
 	_rotating = false
@@ -456,7 +627,7 @@ func _screen_to_ground(screen_pos: Vector2) -> Variant:
 		return null
 	return from + dir * t
 
-func _pan_by_pixels(delta_px: Vector2, anchor_screen_pos: Vector2 = Vector2.INF) -> void:
+func _pan_by_pixels(delta_px: Vector2, anchor_screen_pos: Vector2 = Vector2.INF, clamp_after: bool = true) -> void:
 	var vp := get_viewport()
 	if vp == null:
 		return
@@ -478,7 +649,8 @@ func _pan_by_pixels(delta_px: Vector2, anchor_screen_pos: Vector2 = Vector2.INF)
 	var d: Vector3 = (wa - wb) * pan_speed
 	global_position.x += d.x
 	global_position.z += d.z
-	_clamp_pivot_to_board()
+	if clamp_after and not _knockout_running and not _framing_override:
+		_clamp_pivot_to_board()
 
 func _viewport_corners_screen(vr: Rect2) -> Array:
 	var p := vr.position
@@ -486,9 +658,9 @@ func _viewport_corners_screen(vr: Rect2) -> Array:
 	return [p, p + Vector2(s.x, 0), p + Vector2(0, s.y), p + s]
 
 func _clamp_pivot_to_board() -> void:
-	# Keep the visible ground footprint inside the board rectangle (tilted ortho → ray-test corners).
-	# Use the HUD-safe **play rect** (not full viewport): smaller footprint ⇒ more pan slack at max
-	# zoom and less clamp fighting pan; HUD gutters can show slivers past the nominal board edge.
+	# Keep the playfield on-screen:
+	# - Zoomed in (view smaller than board): keep the visible ground footprint over the board.
+	# - Zoomed out (view larger than board): keep the board inside the view (no void-only pans).
 	var vp := get_viewport()
 	if vp == null or cam == null:
 		return
@@ -516,6 +688,11 @@ func _clamp_pivot_to_board() -> void:
 	var bx1 := board_origin.x + bw + pad
 	var bz0 := board_origin.z - pad
 	var bz1 := board_origin.z + bh + pad
+	# Unpadded board — used when the view is wider than the board.
+	var board_x0 := board_origin.x
+	var board_x1 := board_origin.x + bw
+	var board_z0 := board_origin.z
+	var board_z1 := board_origin.z + bh
 
 	var corners := _viewport_corners_screen(clamp_vr)
 
@@ -526,15 +703,19 @@ func _clamp_pivot_to_board() -> void:
 		var gmax_x: float = -INF
 		var gmin_z: float = INF
 		var gmax_z: float = -INF
+		var hits := 0
 		for c in corners:
 			var gh: Variant = _screen_to_ground(c)
 			if gh == null:
-				return
+				continue
 			var g: Vector3 = gh
 			gmin_x = minf(gmin_x, g.x)
 			gmax_x = maxf(gmax_x, g.x)
 			gmin_z = minf(gmin_z, g.z)
 			gmax_z = maxf(gmax_z, g.z)
+			hits += 1
+		if hits < 2:
+			return
 
 		var span_x := gmax_x - gmin_x
 		var span_z := gmax_z - gmin_z
@@ -543,12 +724,24 @@ func _clamp_pivot_to_board() -> void:
 
 		var dx := 0.0
 		var dz := 0.0
-		if not wide_x:
+		if wide_x:
+			# Keep board inside the view (prevent panning playfield off-screen).
+			if board_x0 < gmin_x:
+				dx += board_x0 - gmin_x
+			if board_x1 > gmax_x:
+				dx += board_x1 - gmax_x
+		else:
+			# Keep view footprint over the board.
 			if gmin_x < bx0:
 				dx += bx0 - gmin_x
 			if gmax_x > bx1:
 				dx -= gmax_x - bx1
-		if not wide_z:
+		if wide_z:
+			if board_z0 < gmin_z:
+				dz += board_z0 - gmin_z
+			if board_z1 > gmax_z:
+				dz += board_z1 - gmax_z
+		else:
 			if gmin_z < bz0:
 				dz += bz0 - gmin_z
 			if gmax_z > bz1:

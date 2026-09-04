@@ -8,7 +8,7 @@ const UnitStateScript = preload("res://src/sim/UnitState.gd")
 const ControlPointStateScript = preload("res://src/sim/ControlPointState.gd")
 const UnitDefsScript = preload("res://src/sim/UnitDefs.gd")
 const RulesScript = preload("res://src/sim/Rules.gd")
-const REINFORCE_HEAL_AMOUNT := 2
+const ORGAN_HP_MAX := 4
 
 ## Default match grid: ~1.5× former 9×9 linear span (round(9 * 1.5) == 14).
 const DEFAULT_BOARD_SIZE := Vector2i(14, 14)
@@ -34,9 +34,11 @@ var player_inventory := {
 	1: {},
 }
 
-# Current 3-card offer for the active player.
+# Current gene offer for the active player.
 var offer_pending: bool = true
 var offer_cards: Array[String] = []
+var offer_mutants: Array[bool] = []
+var offer_picks_remaining: int = 1
 
 # Scheduled abilities (delayed strikes). Resolved in Resolver after turn_number increments.
 var pending_effects: Array = []
@@ -47,7 +49,7 @@ func next_pending_id() -> int:
 	_next_pending_id += 1
 	return id
 
-func setup(p_board_size: Vector2i, p_seed: int = 0) -> void:
+func setup(p_board_size: Vector2i, p_seed: int = 0, p_inventories: Dictionary = {}) -> void:
 	board = BoardStateScript.new(p_board_size)
 	squads.clear()
 	pending_effects.clear()
@@ -63,18 +65,54 @@ func setup(p_board_size: Vector2i, p_seed: int = 0) -> void:
 		seed = int(Time.get_unix_time_from_system())
 	var gen = BoardGeneratorScript.new()
 	gen.call("generate", board, seed)
-	_seed_default_inventory()
+	if p_inventories.is_empty():
+		_seed_default_inventory()
+	else:
+		player_inventory[0] = p_inventories.get(0, _default_pool()).duplicate(true)
+		player_inventory[1] = p_inventories.get(1, _default_pool()).duplicate(true)
 	start_offer_phase()
 	emit_signal("changed")
 
-func add_squad(owner: int, cell: Vector2i, unit_def_id: String, unit_hp: int) -> int:
+## Real matches: odd seeds let P1 take the opening tempo (with both seats still getting 2-of-5).
+func apply_seed_first_player() -> void:
+	active_player = absi(int(seed)) % 2
+	turn_number = 1
+	start_offer_phase()
+	emit_signal("changed")
+
+func _default_pool() -> Dictionary:
+	return {
+		"core": 8,
+		"chunk": 4,
+		"claw": 4,
+		"hoof": 4,
+		"eye": 4,
+		"plate": 3,
+		"gland": 3,
+		"shell": 3,
+		"spore": 2,
+		"spring": 2,
+		"phase": 2,
+		"ram": 2,
+		"spine": 2,
+		"brood": 2,
+		"node": 1,
+		"vent": 1,
+		"leap": 1,
+		"synapse": 1,
+		"pod": 1,
+		"beacon": 1,
+		"anchor": 1,
+	}
+
+func add_squad(owner: int, cell: Vector2i, unit_def_id: String, unit_hp: int, is_mutant: bool = false) -> int:
 	# Back-compat: seed squads created via add_squad are not "fresh" gated.
-	return _add_squad_internal(owner, cell, unit_def_id, unit_hp, false)
+	return _add_squad_internal(owner, cell, unit_def_id, unit_hp, false, is_mutant)
 
-func spawn_fresh_squad(owner: int, cell: Vector2i, unit_def_id: String, unit_hp: int) -> int:
-	return _add_squad_internal(owner, cell, unit_def_id, unit_hp, true)
+func spawn_fresh_squad(owner: int, cell: Vector2i, unit_def_id: String, unit_hp: int, is_mutant: bool = false) -> int:
+	return _add_squad_internal(owner, cell, unit_def_id, unit_hp, true, is_mutant)
 
-func _add_squad_internal(owner: int, cell: Vector2i, unit_def_id: String, unit_hp: int, fresh: bool) -> int:
+func _add_squad_internal(owner: int, cell: Vector2i, unit_def_id: String, unit_hp: int, fresh: bool, is_mutant: bool = false) -> int:
 	var size_cat := UnitDefsScript.size_category(unit_def_id)
 
 	var sid := _next_squad_id
@@ -82,43 +120,68 @@ func _add_squad_internal(owner: int, cell: Vector2i, unit_def_id: String, unit_h
 	var squad := SquadStateScript.new(sid, owner, cell)
 	squad.size_category = size_cat
 	var ready_turn := turn_number + 1 if fresh else turn_number
-	squad.units.append(UnitStateScript.new(unit_def_id, unit_hp, ready_turn))
+	var hp := maxi(1, mini(ORGAN_HP_MAX, int(unit_hp)))
+	squad.units.append(UnitStateScript.new(unit_def_id, hp, ready_turn, is_mutant))
 	if fresh:
 		squad.fresh_turn = turn_number
+	# Logistics/FOB spawns can leave the home band — those mutants are attach-locked immediately.
+	if not rules.is_spawn_pool_cell(self, cell, owner):
+		squad.organs_locked = true
 	squads[sid] = squad
 	emit_signal("changed")
 	return sid
 
-func reinforce_squad(sid: int, unit_def_id: String, unit_hp: int) -> bool:
+func reinforce_squad(sid: int, unit_def_id: String, unit_hp: int, is_mutant: bool = false) -> bool:
 	var s = get_squad(sid)
 	if s == null or not s.is_alive():
 		return false
-	# Fresh-unit gating: reinforcements added this turn make the squad fresh.
+	if bool(s.organs_locked):
+		return false
+	if not rules.can_add_unit_to_squad(s, str(unit_def_id)):
+		return false
+	# Fresh-unit gating: organs attached this turn make the mutant fresh.
 	s.fresh_turn = turn_number
-
-	# Capacity rule: add a unit if squad composition allows, otherwise convert into a heal.
-	if rules.can_add_unit_to_squad(s, str(unit_def_id)):
-		s.units.append(UnitStateScript.new(unit_def_id, unit_hp, turn_number + 1))
-		# Keep squad.size_category aligned with contained units (large if any large unit present).
-		var any_large := false
-		for u_any in s.units:
-			var u = u_any
-			if u != null and int(u.hp) > 0 and UnitDefsScript.size_category(str(u.unit_def_id)) == "large":
-				any_large = true
-				break
-		s.size_category = "large" if any_large else "small"
-		emit_signal("changed")
-		return true
-
-	var u = s.front_unit() if s.has_method("front_unit") else null
-	if u == null:
-		return false
-	var max_hp := int(UnitDefsScript.DEFS.get(str(u.unit_def_id), {}).get("max_hp", 10))
-	if int(u.hp) >= max_hp:
-		return false
-	u.hp = mini(max_hp, int(u.hp) + REINFORCE_HEAL_AMOUNT)
+	var hp := maxi(1, mini(ORGAN_HP_MAX, int(unit_hp)))
+	s.units.append(UnitStateScript.new(unit_def_id, hp, turn_number + 1, is_mutant))
+	_stabilize_core_at_back(s)
+	s.size_category = "small"
 	emit_signal("changed")
 	return true
+
+func field_attach_organ(sid: int, unit_def_id: String, unit_hp: int, is_mutant: bool = false) -> bool:
+	# Gear/egg graft: bypass Spawn Pool lock; still respects hard organ cap.
+	var s = get_squad(sid)
+	if s == null or not s.is_alive():
+		return false
+	if not rules.can_field_attach(s):
+		return false
+	var hp := maxi(1, mini(ORGAN_HP_MAX, int(unit_hp)))
+	s.units.append(UnitStateScript.new(unit_def_id, hp, turn_number, is_mutant))
+	_stabilize_core_at_back(s)
+	s.size_category = "small"
+	emit_signal("changed")
+	return true
+
+func _stabilize_core_at_back(squad) -> void:
+	# Edge: spawn/attach appends in play order, so 🫀 would die first and leave
+	# specialty-only survivors (e.g. shell with slam but no melee). Keep all cores
+	# at the back so outer organs soak damage and the heart dies last.
+	if squad == null or squad.units.size() < 2:
+		return
+	var cores: Array = []
+	var others: Array = []
+	for u in squad.units:
+		if str(u.unit_def_id) == "core":
+			cores.append(u)
+		else:
+			others.append(u)
+	if cores.is_empty() or others.is_empty():
+		return
+	squad.units.clear()
+	for u in others:
+		squad.units.append(u)
+	for u in cores:
+		squad.units.append(u)
 
 func get_squad(sid: int):
 	return squads.get(sid, null)
@@ -149,43 +212,113 @@ func end_turn() -> void:
 	emit_signal("changed")
 
 func _seed_default_inventory() -> void:
-	# Minimal placeholder: enough copies for offline loop testing.
-	var pool := {
-		"soldier": 8,
-		"ninja": 4,
-		"engineer": 4,
-		"buggy": 6,
-		"tank": 4,
-		"chunk": 2,
-		"mrap": 3,
-		"copter": 3,
-	}
+	var pool := _default_pool()
 	player_inventory[0] = pool.duplicate(true)
 	player_inventory[1] = pool.duplicate(true)
 
+func offer_hand_size() -> int:
+	# Both seats get the opening hand on their first turn (cuts first-player skew).
+	return 5 if int(turn_number) <= 2 else 3
+
+func offer_pick_quota() -> int:
+	return 2 if int(turn_number) <= 2 else 1
+
 func start_offer_phase() -> void:
 	offer_pending = true
+	offer_picks_remaining = offer_pick_quota()
 	offer_cards = _generate_offer_cards(active_player, turn_number)
+	offer_mutants = _generate_offer_mutants(offer_cards, active_player, turn_number)
 
 func clear_offer_phase() -> void:
 	offer_pending = false
 	offer_cards = []
+	offer_mutants = []
+	offer_picks_remaining = 0
+
+## Called after a gene is successfully played from the offer tray.
+func record_offer_pick() -> void:
+	offer_picks_remaining = maxi(0, offer_picks_remaining - 1)
+	if offer_picks_remaining <= 0:
+		clear_offer_phase()
+		return
+	prune_unplayable_offer_cards()
+	if offer_cards.is_empty():
+		clear_offer_phase()
+		return
+	var any_playable := false
+	for c in offer_cards:
+		if _offer_is_playable_now(active_player, str(c)):
+			any_playable = true
+			break
+	if not any_playable:
+		clear_offer_phase()
+
+## Remove one played gene from the current offer by tray index.
+func consume_offer_card_at(index: int) -> void:
+	if index < 0 or index >= offer_cards.size():
+		return
+	offer_cards.remove_at(index)
+	if index < offer_mutants.size():
+		offer_mutants.remove_at(index)
+
+## Remove one played gene from the current offer (first matching id).
+func consume_offer_card(unit_def_id: String) -> void:
+	var id := str(unit_def_id)
+	for i in range(offer_cards.size()):
+		if str(offer_cards[i]) == id:
+			consume_offer_card_at(i)
+			break
+
+## Chess 3: offer shows 3 genes; player picks at most one (or Skip).
+## Unplayable cards are pruned so an empty/unplayable tray auto-ends.
+func prune_unplayable_offer_cards() -> void:
+	if not bool(offer_pending):
+		return
+	var kept: Array[String] = []
+	var kept_mut: Array[bool] = []
+	for i in range(offer_cards.size()):
+		var id := str(offer_cards[i])
+		if _offer_is_playable_now(active_player, id):
+			kept.append(id)
+			var mut := false
+			if i < offer_mutants.size():
+				mut = bool(offer_mutants[i])
+			kept_mut.append(mut)
+	offer_cards = kept
+	offer_mutants = kept_mut
+
+func finish_offer_if_done() -> void:
+	# Kept for callers/tests: prune + clear when nothing remains playable.
+	if not bool(offer_pending):
+		return
+	prune_unplayable_offer_cards()
+	if offer_cards.is_empty():
+		clear_offer_phase()
+		return
+	var any_playable := false
+	for c in offer_cards:
+		if _offer_is_playable_now(active_player, str(c)):
+			any_playable = true
+			break
+	if not any_playable:
+		clear_offer_phase()
 
 func _generate_offer_cards(player: int, turn: int) -> Array[String]:
-	# Deterministic 3-card offer based on (seed, player, turn).
-	# Keep it tiny: sample from available inventory keys (fallback to known ids).
+	# Deterministic offer based on (seed, player, turn).
+	# Opening (turns 1–2): 5-card hand; later: 3-card tray.
+	var opening := int(turn) <= 2
+	var hand_size := 5 if opening else 3
 	var pool: Array[String] = []
 	var inv: Dictionary = player_inventory.get(player, {})
 	for k in inv.keys():
 		if int(inv.get(k, 0)) > 0:
 			pool.append(str(k))
 	if pool.is_empty():
-		pool = ["soldier", "archer"]
+		pool = ["core", "claw", "eye"]
 
 	var pool_all: Array[String] = pool.duplicate()
 	pool_all.sort()
-	# Remove inventory ids that cannot be played at all right now (neither spawn nor reinforce).
-	# This prevents misleading offers like showing `soldier` when spawn is impossible and no RA reinforce exists.
+	# Remove inventory ids that cannot be played at all right now (neither spawn nor attach).
 	var filtered: Array[String] = []
 	for id in pool_all:
 		if _offer_is_playable_now(player, str(id)):
@@ -197,10 +330,34 @@ func _generate_offer_cards(player: int, turn: int) -> Array[String]:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = int(seed) ^ int(turn * 1315423911) ^ int(player * 2654435761)
 
+	# Opening: hard-bias teaching genes when inventory has enough of them.
+	var pick_pool: Array[String] = pool
+	if opening:
+		var teach: Array[String] = []
+		for id in pool:
+			if _OPENING_TEACH.has(str(id)):
+				teach.append(str(id))
+		if teach.size() >= 3:
+			pick_pool = teach
+		elif not teach.is_empty():
+			# Any teach left → never roll specialty (Anchor/Brood/…) into the hand.
+			var no_spec: Array[String] = []
+			for id2 in pool:
+				if not _OPENING_SPECIALTY.has(str(id2)):
+					no_spec.append(str(id2))
+			if not no_spec.is_empty():
+				pick_pool = no_spec
+
 	var cards: Array[String] = []
 	var terrain_counts := _offer_terrain_counts_for_player(player)
-	while cards.size() < 3:
-		cards.append(_offer_weighted_pick(pool, terrain_counts, rng))
+	while cards.size() < hand_size:
+		cards.append(_offer_weighted_pick(pick_pool, terrain_counts, rng))
+
+	# Opening: unique faces + kick specialty + teaching body/combat when inventory allows.
+	if opening:
+		_offer_prefer_unique_opening(cards, pick_pool, rng)
+		_offer_prefer_simple_opening(cards, pool)
+		_offer_ensure_opening_teaching(cards, pool)
 
 	# Stronger playability guarantee:
 	# Ensure at least one offered card is currently playable via:
@@ -210,8 +367,105 @@ func _generate_offer_cards(player: int, turn: int) -> Array[String]:
 	# If spawning is still possible for some inventory unit,
 	# ensure at least one card can spawn — avoids "everything reinforces" draws when spawn is still legal.
 	_offer_ensure_at_least_one_spawn_playable(cards, pool, player, rng)
+	# Playability swaps can reintroduce Anchor/Brood — kick again while teach remains.
+	if opening:
+		_offer_prefer_simple_opening(cards, pool)
 
 	return cards
+
+func _generate_offer_mutants(cards: Array[String], player: int, turn: int) -> Array[bool]:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = int(seed) ^ int(turn * 2246822519) ^ int(player * 3266489917) ^ 0x4D5554
+	var out: Array[bool] = []
+	for id in cards:
+		var can_mut := UnitDefsScript.can_roll_mutant(str(id))
+		out.append(can_mut and rng.randf() < UnitDefsScript.MUTANT_OFFER_CHANCE)
+	# Opening 5-hand: guarantee at least one mutant when possible.
+	if int(turn) <= 2 and cards.size() >= 5:
+		var any := false
+		for m in out:
+			if m:
+				any = true
+				break
+		if not any:
+			for i in range(cards.size()):
+				if UnitDefsScript.can_roll_mutant(str(cards[i])):
+					out[i] = true
+					break
+	return out
+
+## Teaching genes for opening hands (turns 1–2).
+const _OPENING_TEACH := ["core", "claw", "eye", "hoof", "shell", "plate", "spring", "chunk"]
+## Specialty tools out of opening 5 when a simpler unused face exists.
+const _OPENING_SPECIALTY := [
+	"anchor", "brood", "spore", "pod", "phase", "beacon", "node",
+	"vent", "spine", "leap", "synapse", "ram", "gland", "airstrike",
+]
+
+func _offer_prefer_simple_opening(cards: Array[String], pool: Array[String]) -> void:
+	var teach_remain := false
+	for t in _OPENING_TEACH:
+		if pool.has(t):
+			teach_remain = true
+			break
+	var simple: Array[String] = []
+	for p in pool:
+		var id := str(p)
+		if _OPENING_SPECIALTY.has(id):
+			continue
+		simple.append(id)
+	if simple.is_empty():
+		return
+	# Prefer teaching faces when swapping specialty out.
+	simple.sort_custom(func(a, b):
+		var ta := _OPENING_TEACH.has(str(a))
+		var tb := _OPENING_TEACH.has(str(b))
+		if ta != tb:
+			return ta
+		return str(a) < str(b)
+	)
+	for i in range(cards.size()):
+		var cid := str(cards[i])
+		# Hard ban: Anchor/Brood never while any teach gene remains in inventory.
+		var ban := _OPENING_SPECIALTY.has(cid)
+		if teach_remain and (cid == "anchor" or cid == "brood"):
+			ban = true
+		if not ban:
+			continue
+		for s in simple:
+			if cards.has(s):
+				continue
+			cards[i] = s
+			break
+		# Last resort: allow a teach already in-hand duplicate over Anchor/Brood.
+		if teach_remain and (str(cards[i]) == "anchor" or str(cards[i]) == "brood"):
+			for s2 in simple:
+				if _OPENING_TEACH.has(str(s2)):
+					cards[i] = s2
+					break
+
+## Opening hand: ≥1 spawn body (core) + ≥1 combat gene when pool allows.
+func _offer_ensure_opening_teaching(cards: Array[String], pool: Array[String]) -> void:
+	if cards.size() < 2:
+		return
+	var combat := ["eye", "claw", "hoof"]
+	# Combat first so a later core fill cannot erase the only eye/claw/hoof.
+	var has_c := false
+	for c in combat:
+		if cards.has(c):
+			has_c = true
+			break
+	if not has_c:
+		for c in combat:
+			if pool.has(c):
+				cards[1] = c
+				break
+	if pool.has("core") and not cards.has("core"):
+		for i in range(cards.size()):
+			if str(cards[i]) in combat:
+				continue
+			cards[i] = "core"
+			return
 
 func _offer_terrain_counts_for_player(player: int) -> Dictionary:
 	# Returns {terrain_id -> count} based on current board state.
@@ -251,16 +505,12 @@ func _offer_terrain_counts_for_player(player: int) -> Dictionary:
 	return counts
 
 func _offer_preferred_terrain_for_unit(unit_def_id: String) -> int:
-	# MVP heuristic (can be upgraded to data-driven affinity later):
-	# - Units that benefit more from melee like Soil (melee buff on Soil).
-	# - Units that benefit more from ranged like Rock (ranged buff on Rock).
-	# - Mobility/utility leaning units like Sand.
-	#
-	# With current placeholder unit defs, keep a stable mapping.
 	match str(unit_def_id):
-		"archer":
+		"eye", "spine", "beacon", "node":
 			return int(BoardStateScript.TERRAIN_ROCK)
-		"ogre":
+		"hoof", "claw", "spring", "leap", "phase", "ram":
+			return int(BoardStateScript.TERRAIN_SAND)
+		"core", "shell", "vent", "plate", "chunk":
 			return int(BoardStateScript.TERRAIN_SOIL)
 		_:
 			return int(BoardStateScript.TERRAIN_SOIL)
@@ -274,7 +524,7 @@ func _offer_weight_for_unit(unit_def_id: String, terrain_counts: Dictionary) -> 
 
 func _offer_weighted_pick(pool: Array[String], terrain_counts: Dictionary, rng: RandomNumberGenerator) -> String:
 	if pool.is_empty():
-		return "soldier"
+		return "core"
 	var total := 0
 	for id in pool:
 		total += _offer_weight_for_unit(str(id), terrain_counts)
@@ -288,6 +538,29 @@ func _offer_weighted_pick(pool: Array[String], terrain_counts: Dictionary, rng: 
 		if roll <= acc:
 			return str(id)
 	return str(pool[pool.size() - 1])
+
+func _offer_prefer_unique_opening(cards: Array[String], pool: Array[String], _rng: RandomNumberGenerator) -> void:
+	# Deterministic: swap each dup to the first unused pool id (sorted).
+	# Keep eye/hoof doubles — decks stack those on purpose (kite plan).
+	for i in range(cards.size()):
+		var id := str(cards[i])
+		if id == "eye" or id == "hoof":
+			continue
+		var earlier := false
+		for j in range(i):
+			if str(cards[j]) == id:
+				earlier = true
+				break
+		if not earlier:
+			continue
+		var unused: Array[String] = []
+		for p in pool:
+			if not cards.has(str(p)):
+				unused.append(str(p))
+		if unused.is_empty():
+			continue
+		unused.sort()
+		cards[i] = str(unused[0])
 
 func _offer_has_any_playable(cards: Array[String], player: int) -> bool:
 	for c in cards:
@@ -420,6 +693,8 @@ func snapshot_dict() -> Dictionary:
 	d["winner"] = int(winner)
 	d["offer_pending"] = bool(offer_pending)
 	d["offer_cards"] = offer_cards.duplicate()
+	d["offer_mutants"] = offer_mutants.duplicate()
+	d["offer_picks_remaining"] = int(offer_picks_remaining)
 	d["player_inventory"] = player_inventory.duplicate(true)
 
 	var bd := {}
@@ -448,6 +723,17 @@ func snapshot_dict() -> Dictionary:
 				"cell": _cell_to_arr(c),
 				"hp": int(o.get("hp", 0)),
 				"destructible": bool(o.get("destructible", false)),
+				"prop_kind": str(o.get("prop_kind", "")),
+			})
+		bd["hero_props"] = []
+		for hp_any in board.hero_props:
+			if typeof(hp_any) != TYPE_DICTIONARY:
+				continue
+			var hp: Dictionary = hp_any
+			bd["hero_props"].append({
+				"cell": _cell_to_arr(hp.get("cell", Vector2i.ZERO)),
+				"kind": str(hp.get("kind", "mushroom")),
+				"variant": int(hp.get("variant", 0)),
 			})
 		bd["hazards"] = []
 		var hz_cells: Array = board.hazards.keys()
@@ -463,6 +749,32 @@ func snapshot_dict() -> Dictionary:
 				"owner": int(h.get("owner", 0)),
 				"damage": int(h.get("damage", 0)),
 				"splash": int(h.get("splash", 0)),
+			})
+		bd["gear"] = []
+		var gear_cells: Array = board.gear.keys()
+		gear_cells.sort_custom(func(a, b): return (a.x == b.x and a.y < b.y) or (a.x < b.x))
+		for cell in gear_cells:
+			var c: Vector2i = cell
+			var g = board.gear.get(c, null)
+			if g == null:
+				continue
+			bd["gear"].append({
+				"cell": _cell_to_arr(c),
+				"unit_def_id": str(g.get("unit_def_id", "")),
+				"is_mutant": bool(g.get("is_mutant", false)),
+			})
+		bd["eggs"] = []
+		var egg_cells: Array = board.eggs.keys()
+		egg_cells.sort_custom(func(a, b): return (a.x == b.x and a.y < b.y) or (a.x < b.x))
+		for cell in egg_cells:
+			var c: Vector2i = cell
+			var e = board.eggs.get(c, null)
+			if e == null:
+				continue
+			bd["eggs"].append({
+				"cell": _cell_to_arr(c),
+				"unit_def_id": str(e.get("unit_def_id", "")),
+				"is_mutant": bool(e.get("is_mutant", false)),
 			})
 	d["board"] = bd
 
@@ -482,6 +794,7 @@ func snapshot_dict() -> Dictionary:
 				"unit_def_id": str(unit.unit_def_id),
 				"hp": int(unit.hp),
 				"ready_turn": int(unit.ready_turn),
+				"is_mutant": bool(unit.is_mutant),
 			})
 		squads_arr.append({
 			"id": int(s.id),
@@ -492,6 +805,7 @@ func snapshot_dict() -> Dictionary:
 			"moved_turn": int(s.moved_turn),
 			"cooldowns": s.cooldowns.duplicate(true),
 			"snared_no_move_until_turn": int(s.snared_no_move_until_turn),
+			"organs_locked": bool(s.organs_locked),
 			"units": units_arr,
 		})
 	d["squads"] = squads_arr
@@ -511,6 +825,10 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 	offer_cards = []
 	for c in d.get("offer_cards", []):
 		offer_cards.append(str(c))
+	offer_mutants = []
+	for m in d.get("offer_mutants", []):
+		offer_mutants.append(bool(m))
+	offer_picks_remaining = int(d.get("offer_picks_remaining", 0))
 	player_inventory = d.get("player_inventory", {0: {}, 1: {}}).duplicate(true)
 
 	var bd: Dictionary = d.get("board", {})
@@ -540,12 +858,36 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 		for o_any in bd.get("obstacles", []):
 			var o: Dictionary = o_any
 			var c := _arr_to_cell(o.get("cell", [0, 0]))
-			board.obstacles[c] = {"hp": int(o.get("hp", 0)), "destructible": bool(o.get("destructible", false))}
+			board.obstacles[c] = {
+				"hp": int(o.get("hp", 0)),
+				"destructible": bool(o.get("destructible", false)),
+				"prop_kind": str(o.get("prop_kind", "")),
+			}
+	board.hero_props.clear()
+	for hp_any in bd.get("hero_props", []):
+		if typeof(hp_any) != TYPE_DICTIONARY:
+			continue
+		var hp: Dictionary = hp_any
+		board.hero_props.append({
+			"cell": _arr_to_cell(hp.get("cell", [0, 0])),
+			"kind": str(hp.get("kind", "mushroom")),
+			"variant": int(hp.get("variant", 0)),
+		})
 	board.hazards.clear()
 	for h_any in bd.get("hazards", []):
 		var h: Dictionary = h_any
 		var c := _arr_to_cell(h.get("cell", [0, 0]))
 		board.set_hazard(c, str(h.get("kind", "mine")), int(h.get("owner", 0)), int(h.get("damage", 2)), int(h.get("splash", 0)))
+	board.gear.clear()
+	for g_any in bd.get("gear", []):
+		var g: Dictionary = g_any
+		var c := _arr_to_cell(g.get("cell", [0, 0]))
+		board.set_gear(c, str(g.get("unit_def_id", "claw")), bool(g.get("is_mutant", false)))
+	board.eggs.clear()
+	for e_any in bd.get("eggs", []):
+		var e: Dictionary = e_any
+		var c := _arr_to_cell(e.get("cell", [0, 0]))
+		board.set_egg(c, str(e.get("unit_def_id", "chunk")), bool(e.get("is_mutant", false)))
 
 	pending_effects.clear()
 	for pe_any in d.get("pending_effects", []):
@@ -565,10 +907,16 @@ func apply_snapshot_dict(d: Dictionary) -> void:
 		squad.moved_turn = int(sd.get("moved_turn", -1))
 		squad.cooldowns = sd.get("cooldowns", {}).duplicate(true)
 		squad.snared_no_move_until_turn = int(sd.get("snared_no_move_until_turn", -1))
+		squad.organs_locked = bool(sd.get("organs_locked", false))
 		squad.units.clear()
 		for u_any in sd.get("units", []):
 			var ud: Dictionary = u_any
-			squad.units.append(UnitStateScript.new(str(ud.get("unit_def_id", "soldier")), int(ud.get("hp", 1)), int(ud.get("ready_turn", 1))))
+			squad.units.append(UnitStateScript.new(
+				str(ud.get("unit_def_id", "core")),
+				int(ud.get("hp", 1)),
+				int(ud.get("ready_turn", 1)),
+				bool(ud.get("is_mutant", false))
+			))
 		squads[sid] = squad
 	_next_squad_id = max_id + 1
 	selected_squad_id = -1
@@ -663,7 +1011,12 @@ func apply_authoritative_net_state(net: Dictionary) -> void:
 			squad.units.clear()
 			for u_any in sd.get("units", []):
 				var ud: Dictionary = u_any
-				squad.units.append(UnitStateScript.new(str(ud.get("unit_def_id", "soldier")), int(ud.get("hp", 1)), int(ud.get("ready_turn", 1))))
+				squad.units.append(UnitStateScript.new(
+					str(ud.get("unit_def_id", "core")),
+					int(ud.get("hp", 1)),
+					int(ud.get("ready_turn", 1)),
+					bool(ud.get("is_mutant", false))
+				))
 			squads[sid] = squad
 		elif existing != null:
 			existing.cell = cell
@@ -674,7 +1027,7 @@ func apply_authoritative_net_state(net: Dictionary) -> void:
 			squad2.fresh_turn = -1
 			squad2.cooldowns = {"melee": 0, "ranged": 0}
 			squad2.units.clear()
-			squad2.units.append(UnitStateScript.new("soldier", 10, turn_number))
+			squad2.units.append(UnitStateScript.new("core", 1, turn_number))
 			squads[sid] = squad2
 
 	var to_remove: Array = []

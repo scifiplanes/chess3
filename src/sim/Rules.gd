@@ -1,53 +1,125 @@
 extends RefCounted
 class_name Rules
 
-const MOVE_RANGE := 3
+const MOVE_RANGE := 1
 const HOME_SPAWN_ROWS := 2
-# Per-squad composition (from `UnitDefs.size`):
-# Up to 3 small-class units + 1 large-class unit (4 alive units max) in a single squad.
-const SQUAD_MAX_SMALL_UNITS := 3
-const SQUAD_MAX_LARGE_UNITS := 1
-const SQUAD_MAX_TOTAL_UNITS := SQUAD_MAX_SMALL_UNITS + SQUAD_MAX_LARGE_UNITS
+# Extra obstacle-free rows beyond the Spawn Pool so Mutants can exit orthogonally.
+const SPAWN_EGRESS_ROWS := 1
+# Chess 3 organ caps: soft ceiling (UI), hard max (rules).
+const ORGAN_SOFT_CEILING := 6
+const ORGAN_HARD_MAX := 10
+const SQUAD_MAX_TOTAL_UNITS := ORGAN_HARD_MAX
 const BoardStateScript = preload("res://src/sim/BoardState.gd")
 const UnitDefsScript = preload("res://src/sim/UnitDefs.gd")
 
-func _unit_size_category(unit_def_id: String) -> String:
-	var cat := UnitDefsScript.size_category(unit_def_id)
-	return "large" if cat == "large" else "small"
-
 func squad_alive_unit_counts(squad) -> Dictionary:
-	var out := {"small": 0, "large": 0, "total": 0}
-	if squad == null:
-		return out
-	for u_any in squad.units:
-		var u = u_any
-		if u == null or int(u.hp) <= 0:
-			continue
-		var cat := _unit_size_category(str(u.unit_def_id))
-		out[cat] = int(out.get(cat, 0)) + 1
-		out["total"] = int(out["total"]) + 1
-	return out
+	var total := 0
+	if squad != null:
+		total = int(squad.unit_count_alive()) if squad.has_method("unit_count_alive") else 0
+	return {"small": total, "large": 0, "total": total}
 
-func can_add_unit_to_squad(squad, unit_def_id: String) -> bool:
+func can_add_unit_to_squad(squad, _unit_def_id: String) -> bool:
 	if squad == null or not squad.is_alive():
 		return false
-	var incoming := _unit_size_category(str(unit_def_id))
-	var c := squad_alive_unit_counts(squad)
-	if int(c.get("total", 0)) >= SQUAD_MAX_TOTAL_UNITS:
+	if bool(squad.organs_locked):
 		return false
-	if incoming == "large":
-		return int(c.get("large", 0)) < SQUAD_MAX_LARGE_UNITS
-	return int(c.get("small", 0)) < SQUAD_MAX_SMALL_UNITS
+	return int(squad.unit_count_alive()) < ORGAN_HARD_MAX
+
+func can_field_attach(squad) -> bool:
+	# Gear/egg pickup: works anywhere on the board while under hard max.
+	if squad == null or not squad.is_alive():
+		return false
+	return int(squad.unit_count_alive()) < ORGAN_HARD_MAX
+
+func board_pickup_cells(gs) -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	if gs == null or gs.board == null:
+		return out
+	for c_any in gs.board.gear.keys():
+		var gear = gs.board.gear_at(c_any)
+		var gid := str(gear.get("unit_def_id", "")) if gear != null else ""
+		# Non-reclaimable floor leftovers are debris, not pickups.
+		if gid != "" and UnitDefsScript.is_reclaimable_gear(gid):
+			out.append(c_any)
+	for c_any in gs.board.eggs.keys():
+		var c: Vector2i = c_any
+		if not out.has(c):
+			out.append(c)
+	return out
+
+func pickup_unit_def_id(gs, cell: Vector2i) -> String:
+	if gs == null or gs.board == null:
+		return ""
+	var egg = gs.board.egg_at(cell)
+	if egg != null:
+		return str(egg.get("unit_def_id", ""))
+	var gear = gs.board.gear_at(cell)
+	if gear != null:
+		return str(gear.get("unit_def_id", ""))
+	return ""
+
+func pickup_is_egg(gs, cell: Vector2i) -> bool:
+	return gs != null and gs.board != null and gs.board.eggs.has(cell)
+
+## Cells with gear/eggs reachable this turn via basic Move and/or Run.
+func reachable_field_pickups(gs, sid: int) -> Array[Vector2i]:
+	var s = gs.get_squad(sid)
+	if s == null or not can_field_attach(s):
+		return []
+	var merged: Dictionary = {}
+	for c_any in _pathfinding.reachable_cells(gs, sid, move_range_for_squad(gs, s)).keys():
+		merged[c_any] = true
+	merged[s.cell] = true
+	if int(s.cooldowns.get("run", 0)) <= 0:
+		for aid in UnitDefsScript.list_action_ids_for_squad(s):
+			if str(aid) != "run":
+				continue
+			var ad: Dictionary = UnitDefsScript.action_def_for_squad(s, "run")
+			var steps := int(ad.get("steps", 3))
+			for c2_any in _pathfinding.reachable_cells(gs, sid, steps).keys():
+				merged[c2_any] = true
+			break
+	var out: Array[Vector2i] = []
+	for c3 in board_pickup_cells(gs):
+		if merged.has(c3):
+			out.append(c3)
+	return out
+
+func is_spawn_pool_cell(gs, cell: Vector2i, player: int) -> bool:
+	if gs == null or gs.board == null:
+		return false
+	if not gs.board.in_bounds(cell):
+		return false
+	var y0: int = 0
+	var y1: int = int(gs.board.size.y) - 1
+	var min_y: int = y0 if player == 0 else maxi(y0, y1 - (HOME_SPAWN_ROWS - 1))
+	var max_y: int = mini(y1, (HOME_SPAWN_ROWS - 1)) if player == 0 else y1
+	return int(cell.y) >= min_y and int(cell.y) <= max_y
 
 func move_range_for_squad(gs, squad) -> int:
-	# MVP terrain movement modifier:
-	# - Sand: +1 move range for squads standing on Sand.
+	# MVP movement modifiers:
+	# - Spawn Pool: +1 range while still in home band (faster egress for rush/tank).
+	# - Sand: +1 range while standing on Sand.
 	if gs == null or squad == null or gs.board == null:
 		return MOVE_RANGE
+	var base := MOVE_RANGE
+	if is_spawn_pool_cell(gs, squad.cell, int(squad.owner)):
+		base += 1
 	var t := int(gs.board.terrain_at(squad.cell))
 	if t == BoardStateScript.TERRAIN_SAND:
-		return MOVE_RANGE + 1
-	return MOVE_RANGE
+		base += 1
+	base = maxi(1, base - UnitDefsScript.move_range_penalty(squad))
+	var organ_n := int(squad.unit_count_alive()) if squad.has_method("unit_count_alive") else 0
+	if organ_n >= 7:
+		base = maxi(1, base - 1)
+	if organ_n >= 9:
+		base = maxi(1, base - 1)
+	return base
+
+func swarm_stack_damage_penalty(squad) -> int:
+	if squad == null or not squad.has_method("unit_count_alive"):
+		return 0
+	return 1 if int(squad.unit_count_alive()) >= 8 else 0
 
 func can_select_squad(gs, sid: int) -> bool:
 	if gs.winner != -1:
@@ -68,7 +140,11 @@ func can_set_front_unit(gs, squad_id: int, unit_index: int) -> bool:
 	return u != null and int(u.hp) > 0
 
 func can_end_turn(gs) -> bool:
-	return gs.winner == -1
+	if gs.winner != -1:
+		return false
+	if bool(gs.offer_pending):
+		return false
+	return true
 
 func _squad_can_attempt_basic_move(gs, s) -> bool:
 	if gs == null or s == null or not s.is_alive():
@@ -143,7 +219,7 @@ func squad_has_available_action(gs, sid: int) -> bool:
 	var u = s.front_unit() if s.has_method("front_unit") else null
 	if u == null:
 		return false
-	var ids: Array[String] = UnitDefsScript.list_action_ids(str(u.unit_def_id))
+	var ids: Array[String] = UnitDefsScript.list_action_ids_for_squad(s)
 	for aid in ids:
 		if int(s.cooldowns.get(aid, 0)) <= 0:
 			return true
@@ -182,10 +258,7 @@ func can_attack(gs, attacker_id: int, defender_id: int, action_id: String) -> bo
 	if int(a.cooldowns.get(action_id, 0)) > 0:
 		return false
 
-	var u = a.front_unit()
-	if u == null:
-		return false
-	var action_def: Dictionary = UnitDefsScript.action_def(str(u.unit_def_id), action_id)
+	var action_def: Dictionary = UnitDefsScript.action_def_for_squad(a, action_id)
 	if action_def.is_empty():
 		return false
 	var r := int(action_def.get("range", 1))
@@ -274,10 +347,7 @@ func can_attack_obstacle(gs, attacker_id: int, cell: Vector2i, action_id: String
 	if int(a.cooldowns.get(action_id, 0)) > 0:
 		return false
 
-	var u = a.front_unit()
-	if u == null:
-		return false
-	var action_def: Dictionary = UnitDefsScript.action_def(str(u.unit_def_id), action_id)
+	var action_def: Dictionary = UnitDefsScript.action_def_for_squad(a, action_id)
 	if action_def.is_empty():
 		return false
 	var r := int(action_def.get("range", 1))
@@ -321,7 +391,9 @@ func can_reinforce(gs, squad_id: int) -> bool:
 		return false
 	if int(s.owner) != int(gs.active_player):
 		return false
-	return gs.board.is_reinforcement_area(s.cell)
+	if bool(s.organs_locked):
+		return false
+	return is_spawn_pool_cell(gs, s.cell, int(s.owner))
 
 func _chebyshev(a: Vector2i, b: Vector2i) -> int:
 	return maxi(abs(a.x - b.x), abs(a.y - b.y))
@@ -338,10 +410,14 @@ func _logistics_spawn_extra_cells(gs, player: int) -> Array[Vector2i]:
 			continue
 		if int(s.owner) != int(player):
 			continue
-		var u = s.front_unit()
-		if u == null:
-			continue
-		var tags: Array = UnitDefsScript.unit_tags(str(u.unit_def_id))
+		var tags: Array = []
+		for u_any in s.units:
+			var u = u_any
+			if u == null or int(u.hp) <= 0:
+				continue
+			for t in UnitDefsScript.unit_tags(str(u.unit_def_id)):
+				if not tags.has(t):
+					tags.append(t)
 		var has_log := tags.has("logistics")
 		var has_fob := tags.has("fob")
 		if not has_log and not has_fob:
@@ -365,14 +441,29 @@ func _logistics_spawn_extra_cells(gs, player: int) -> Array[Vector2i]:
 	return out
 
 func is_reinforcement_area(gs, cell: Vector2i, player: int) -> bool:
-	# Plan C RA: explicit board-marked reinforcement area cells.
-	# (player arg kept for back-compat with existing call sites)
-	return gs.board.is_reinforcement_area(cell)
+	# Chess 3: attach zone is Spawn Pool only (home band).
+	return is_spawn_pool_cell(gs, cell, player)
+
+func _offer_contains(gs, unit_def_id: String) -> bool:
+	if gs == null:
+		return false
+	var id := str(unit_def_id)
+	if id == "":
+		return false
+	for c in gs.offer_cards:
+		if str(c) == id:
+			return true
+	return false
 
 func can_play_card_spawn(gs, unit_def_id: String, cell: Vector2i) -> bool:
 	if gs.winner != -1:
 		return false
 	if not bool(gs.offer_pending):
+		return false
+	if not _offer_contains(gs, unit_def_id):
+		return false
+	var inv: Dictionary = gs.player_inventory.get(gs.active_player, {})
+	if int(inv.get(str(unit_def_id), 0)) <= 0:
 		return false
 	if not gs.board.in_bounds(cell):
 		return false
@@ -384,28 +475,26 @@ func can_play_card_spawn(gs, unit_def_id: String, cell: Vector2i) -> bool:
 	return legal.has(cell)
 
 func can_play_card_reinforce(gs, unit_def_id: String, squad_id: int) -> bool:
+	# Chess 3: attach organ to unlocked mutant in Spawn Pool.
 	if gs.winner != -1:
 		return false
 	if not bool(gs.offer_pending):
+		return false
+	if not _offer_contains(gs, unit_def_id):
+		return false
+	var inv: Dictionary = gs.player_inventory.get(gs.active_player, {})
+	if int(inv.get(str(unit_def_id), 0)) <= 0:
 		return false
 	var s = gs.get_squad(squad_id)
 	if s == null or not s.is_alive():
 		return false
 	if s.owner != gs.active_player:
 		return false
-	if not is_reinforcement_area(gs, s.cell, gs.active_player):
+	if bool(s.organs_locked):
 		return false
-
-	# Reinforce is explicit:
-	# - If squad has capacity under the small/large composition cap: add a unit.
-	# - If squad cannot accept another unit: card may be played to heal front unit (only if it isn't at max HP).
-	if can_add_unit_to_squad(s, str(unit_def_id)):
-		return true
-	var u = s.front_unit() if s.has_method("front_unit") else null
-	if u == null:
+	if not is_spawn_pool_cell(gs, s.cell, gs.active_player):
 		return false
-	var max_hp := int(UnitDefsScript.DEFS.get(str(u.unit_def_id), {}).get("max_hp", 10))
-	return int(u.hp) < max_hp
+	return can_add_unit_to_squad(s, str(unit_def_id))
 
 const PathfindingScript = preload("res://src/sim/Pathfinding.gd")
 var _pathfinding = PathfindingScript.new()

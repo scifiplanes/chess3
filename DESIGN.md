@@ -1,185 +1,92 @@
-# Game Design (Concise)
+# Game Design — Chess 3 (Mutants / Organs)
 
 ## Vision
-- **Core**: Turn-based tactics on a **3D voxel board** with **2D sprite squads**.
-- **Feel**: Readable, snappy, deterministic tactics with light procedural variety.
+- **Core**: Turn-based tactics on a **3D voxel board**; pieces are **Mutants** built from **Organs**.
+- **Feel**: Readable, snappy, deterministic tactics; Mutants look like janky emoji humanoids.
 
-## Prototype → New Game Mapping
-- **Grid**: Keep square grid gameplay; render in 3D with voxel ground + voxel obstacles.
-- **Entities**: Replace “creatures” with **Squads** composed of **Units**.
-- **UI loop**: Select squad/unit → choose action → select target → resolve → end turn.
+## Chess 2 → Chess 3 Mapping
+- **Squad** → **Mutant** (one piece per cell).
+- **Unit** → **Organ** (stack members; each is **1 HP**).
+- **Army inventory / offers** → **Gene pool** (organ genes offered each turn).
+- **Reinforce** → **Attach** organ onto a Mutant (Spawn Pool only, while unlocked).
 
 ## Core Rules (MVP)
-- **Players**: 2 players, alternating turns.
-- **Determinism**: No RNG in combat/movement resolution; randomness only in draft/offers (if used).
-- **Turn structure** (candidate from prototype):
-  - Offer phase → placement/upgrade phase → action phase → end turn (tick cooldowns/effects, resolve delayed effects).
-- **MVP (current implementation)**:
-  - **Offer phase (offline, minimal)**:
-    - At the start of each turn, the active player gets a **3-card offer** (+ Skip).
-    - Player plays **1 card** (spawn or reinforce) or **skips**, then proceeds with normal actions.
-    - Offer card targeting **defaults to spawn** when spawn is legal; it switches to **reinforce** when reinforce is legal **and** spawn isn’t, **or** when you’ve selected an owned squad in a **reinforceable zone** (home deployment band or CP) that can legally reinforce that card.
-    - Offers are **deterministic** from a match seed + turn number.
-  - **Board size**: 14×14 (~1.5× former 9×9 edge length; same 1-unit cells).
-  - **Movement**: **always the entire squad** — one piece per squad cell; units never move or occupy cells independently. Orthogonal BFS up to range 3; blocked/occupied cells are not enterable. **Basic Move is once per squad per turn**; movement abilities (Run/Blink/…) remain cooldown-gated.
-  - **Actions** (deterministic, data-driven per unit def):
-    - Actions live on `UnitDefs` as `actions[action_id]` with `{ id, kind, range, damage, cooldown, type, tags?, … }`. **`kind`** selects resolver behavior (melee/ranged, Run/Blink/Dash, delayed strikes, traps, Switch, etc.).
-    - HUD **Move** + **End Turn** are fixed; **ability buttons** are built from the selected squad’s front unit `actions` keys (each unit type defines its own loadout).
-    - **Availability cues**: active-player squads with a remaining basic Move show a **cyan** ring; squads with any ability off cooldown show an **amber** ring. When neither remains, **End Turn** is highlighted.
-  - **Optional action fields** (backwards compatible):
-    - `aoe_radius`: splash radius around defender cell (Manhattan).
-    - `aoe_splash`: splash damage applied to each additional enemy squad hit.
-    - `self_move: "dash_adjacent"`: attacker dashes to an empty cell adjacent to defender before dealing damage (deterministic landing).
-    - `obstacle_bonus`: added damage when targeting destructible obstacles.
-- **Board**:
-  - Voxel tiles with terrain types (e.g. soil/rock/sand) and blocked voxel obstacles.
-  - Control Points (CPs) placed on the board; each has an owner state.
-- **Terrain identity** (candidate from prototype):
-  - Soil: melee/defence/growth/mobility bias
-  - Rock: heavy/armor/ranged bias
-  - Sand: mobility/blink/traps/eruption bias
-  - **Implemented now (MVP combat modifiers)**:
-    - **Soil**: +1 melee damage (attacker standing on Soil).
-    - **Rock**: +1 ranged damage (attacker standing on Rock).
-    - **Sand**: no combat modifier yet (reserved for mobility/utility).
-  - **Implemented now (MVP utility modifiers)**:
-    - **Sand**: +1 move range (squad standing on Sand).
-    - **Rock**: -1 incoming ranged damage (defender standing on Rock; min damage 1).
-    - **Soil**: +1 HP regen to front unit at end of turn (squad standing on Soil; capped by unit max HP).
-- **Obstacles** (candidate from prototype): ~12% impassable voxels, excluded from start zones and near centre.
-  - Some obstacles are **destructible** (block movement until destroyed).
-  - **Current implementation (seeded generation)**:
-    - Terrain: per-cell sampling with simple weights (Soil most common; Rock/Sand sprinkled).
-    - Obstacles: target density ~12% of cells, placed deterministically from a seeded candidate list.
-    - Exclusions: no obstacles in home spawn rows (top/bottom), and no obstacles within Manhattan distance 1 of the center cell or any CP.
-    - Playability guarantees: generator carves a clear lane from each home band toward the CP row and prevents CPs from being fully walled in.
-  - **Implemented now (MVP interaction)**: melee/ranged can target destructible obstacles (within range) to reduce obstacle HP; at 0 HP the cell becomes passable.
-- **Squads / Units**:
-  - A **Squad** is the primary selectable piece.
-  - A Squad contains 1..N **Units**; Units are 2D sprites anchored to a 3D cell.
-  - A Squad occupies a cell; Units are represented visually as a stack/row over that cell (MVP: **emoji labels** per alive unit; replaceable with textured sprites later).
-  - **Movement never splits squads**: all movement abilities relocate the **whole squad** to another cell; individual units do not have separate board positions.
-  - **Per-squad composition cap**: each squad can hold **up to 3 small-class units + 1 large-class unit** (at most **4** alive units in one cell).
-  - When a squad is **full**, that card play **reinforces/heals** in **reinforcement zones** (home deployment rows and/or CP) instead of adding another unit.
-  - **Alive**: a squad is alive if **any unit** in it has HP > 0.
-  - **Targeting**: attacks hit the squad’s **front alive unit** (first alive unit in `units[]`).
-- **Actions**:
-  - Actions have **range**, **targeting rule**, and **cooldown** (turn-based).
-  - **Unit roster (content MVP)**:
-    - `soldier`: baseline melee + ranged.
-    - `archer`: baseline melee + ranged (lower HP).
-    - `tank`: high HP brawler; strong melee, weak short-ranged shot.
-    - `mage`: fragile; ranged attack splashes nearby enemy squads (AoE).
-    - `rogue`: dash strike melee (range 2; dashes adjacent) for reach/picks.
-    - `bomber`: demolition ranged shot; strong vs obstacles via `obstacle_bonus`, weak vs squads.
-- **No action points**: Abilities are limited by per-action cooldowns and target legality (multiple abilities OK if ready). **Basic Move** is limited to **once per squad per turn**.
-- **Control Points** (candidate from prototype):
-  - Being **on or orthogonally adjacent** to a CP at end of turn adds a “flag”.
-  - At 3 flags: CP is captured; majority CPs wins.
-- **Win condition**: Control a majority of CPs, **or eliminate all enemy squads**.
-  - **Implemented now**: CPs at fixed cells; end-turn adds 1 flag if exactly one player occupies/adjoins (Manhattan ≤ 1); capture at 3 flags; match ends on majority CPs. Elimination is checked after damage and end-turn. Match stops advancing turns once a winner is set.
+- **Players**: 2, alternating turns. Opener = **`seed % 2`**; **both** seats get opening (**2 of 5**) on turns 1–2.
+- **Determinism**: No RNG in combat/movement; gene offers are seeded.
+- **Turn structure**: Gene offer → **first personal turn: pick 2 of 5** (or Skip remaining); **later: pick 1 of 3** or Skip → Action phase → End Turn. Opening prompts are **step-by-step** (`n/2`); **MOVE/END/ability keys hide** while any gene offer is up.
+- **Hot-seat deck**: **72pt DECK** budget; **BALANCED** default is an **8-gene signature rack** at full budget. Style presets (**rush/kite/tank/swarm**) also fill to **72**. Prep UI is **loadout bay** (style pills → specimen rack visible by default; catalog behind **Customize**; CLEAR as text link) with optional **gene draft** ritual; P1 lock → pass-device handoff → P2 → start. Prep hint uses readable **system sans** + ASCII `-> LOCK` (Jrudge C glyph reads as `<`).
+  - Unchosen genes stay in the pool for later offers; Skip takes none.
+- **Board**: 14×14 voxels; terrain (Soil/Rock/Sand); destructible obstacles (weird mushroom alpha sprites); Control Points.
+- **Movement**: entire Mutant only; basic **Move** **1** cell (Sand **+1** → 2); **Run** ability (**Stride Hoof**) **3** cells; basic Move once per Mutant per turn.
+- **Win**: majority of CPs — stand **in the CP zone** (CP cell + 8 neighbors) for **7** uncontested end-turn flags (**8** if you only have one living Mutant), **or** eliminate all enemy Mutants.
+- **Move**: **1** cell baseline; **+1** while in your **Spawn Pool** (egress); **+1** on Sand (stacks).
 
-## Progression + Army Decks (Match Availability)
-- **Meta**: players collect **Units** and assemble an **Army** (deck) that defines what can appear during the match.
-- **In-match Offer** (Option 1):
-  - Each turn, server offers **3 Unit cards** sampled from the player’s remaining deck inventory.
-  - **Implemented now (MVP)**: cards are sampled only from inventory entries that are **actually playable right now** (spawnable or reinforceable); unplayable inventory IDs are omitted from the random pool.
-  - Offer is **terrain-weighted** based on the current board state (terrain under the player’s alive squads; if none, terrain in the player’s home spawn band).
-  - Offers are **deterministic** from match seed + turn number + active player.
-  - **Playability guarantee**: offer includes at least 1 card playable **right now** as either:
-    - **Spawn** (has a legal spawn cell and an available squad slot for that unit size), or
-    - **Reinforce** (you have inventory for the unit and **some** owned squad is on an **RA cell** (home/deployment band or CP) with capacity or can be healed).
-  - **Spawn bias (MVP)**: if spawning is still legal for any inventory unit (notably when **small squad slots are full** but a **large slot** remains), the offer tries to include at least one **spawnable** card so offers don’t collapse into reinforce-only purely due to RNG.
-  - Player plays 1 offered card or **skips** (skip = no placement this turn).
-- **One card type, two modes**:
-  - **Spawn mode**: play a Unit card to create a new Squad on a legal spawn cell (start zones, etc.). **Large-first spawn is allowed**.
-  - **Reinforce mode**:
-    - If the squad has capacity: adds a Unit into that Squad.
-    - If the squad is full: converts into a **small heal** (only legal if the front unit isn’t already at max HP).
-- **Reinforcement Areas (RA)**:
-  - Reinforce only if the target Squad is standing on an **RA cell**.
-  - **Implemented now (MVP)**: RA includes **home/deployment rows** (same bands as spawn) **plus** **CP cells** (marked on the board).
-  - RA can be **fixed zones** and/or **capturable reinforcement points**.
-- **Fresh units**:
-  - Placement doesn’t end turn.
-  - Units added this turn (spawn/reinforce) **cannot act until next turn**.
-  - **Implemented now (MVP)**: squads that were spawned or reinforced this turn cannot Move/Melee/Ranged or attack obstacles this turn.
+## Mutants & Organs
+- A Mutant is alive while it has **≥1 organ**.
+- Each organ has **1 HP** (exception: **Graft Plate** is **4 HP**). Damage removes organs from the **front of the stack** (index 0 upward); removed organs leave the array.
+- **Mutant organs** (~22% offer roll; turn-1 hand guarantees ≥1 when possible): **2 HP**, **2.2×** board scale, one **bonus ability** borrowed from another organ type (shown on gene cartridge as `M·` + extra action).
+- **N damage → N HP chipped** on the front organ first; pop when HP hits 0 (terrain bonuses/reductions still apply to raw damage before chip count).
+- **24 organ genes** (21 offer + 3 egg-only curses) cover abilities + debuffs; see `docs/organs-spec.md`.
+- Organs grant abilities; the Mutant uses the **union** of all attached organs’ actions (duplicate action ids merge to the **strongest** variant by damage/range/steps; one shared cooldown on the Mutant).
+- On attach, **core** organs are kept at the **back** of the stack (die last); specialty organs soak damage first.
+- **Soft ceiling**: prefer ≤ **6** organs (UI cue). **Hard max**: **10**. At **7+** organs: **−1 move**; at **9+**: **−1** more; **+1 damage taken** at **8+**.
+- Free attach order otherwise; visuals apply a soft humanoid bias (see `docs/organs-spec.md`). Front-of-stack organ gets a warm outline (dies next).
+- **Symmetrical slots**: organs on `arm_r` / `leg_r` mirror horizontally so limbs face outward.
+- Board keeps one **egress row** beyond each Spawn Pool clear of obstacles so Mutants can leave without being walled in.
 
-## Rendering Rules
-- **World**: 3D voxels for ground and obstacles.
-- **Characters**: 2D sprites billboarded to camera; consistent scale and sorting.
-- **Readability**: Always show selected squad, reachable cells, and attackable cells.
-  - Active-player availability rings: cyan = basic Move left; amber = ability off cooldown.
-  - Attack mode highlights: legal enemy targets are highlighted; hovered legal target is preview-highlighted.
-  - Offer targeting highlights: spawn cells and legal reinforce targets are highlighted during card targeting.
-  - **Combat preview (MVP)**: hovering a legal target in melee/ranged shows predicted damage with terrain attacker bonus + defender reduction.
-  - **Optional range overlay**: in melee/ranged mode, all in-range cells are tinted.
+## Spawn Pool & Attach
+- **Spawn Pool** = home deployment band only (not CPs).
+- **Match start**: empty board — no pre-placed Mutants; first squads come from gene offers.
+- **Spawn**: play a gene on an empty Spawn Pool cell → new Mutant with that organ.
+- **Attach**: play a gene onto an owned Mutant that is in the Spawn Pool and **`organs_locked == false`**.
+- Attach can target the **same cell repeatedly** (stack more organs) until lock or hard max.
+- The moment a Mutant’s cell is **outside** the Spawn Pool, set **`organs_locked`**. Locked forever (return to pool does not unlock).
+- No heal-on-full attach. Fresh Mutants/attaches cannot act until next turn.
 
-## UX Conventions (MVP)
-- **Camera controls (MVP)**:
-  - **Zoom**: wheel/trackpad zoom; pinch to zoom on touch screens. Zoom keeps the point under the cursor (or two-finger centroid) **anchored in screen space** before board-edge clamping, so the view does not “crawl” or jump.
-  - **Rotate**: press-and-hold, then drag left/right to rotate the board; **free rotation** (no snap).
-  - **Pan**: trackpad two-finger pan / right-drag (desktop) / two-finger drag (touch).
-  - **Start framing**: on startup (and on window resize), camera auto-zooms to fit the entire board inside the HUD-safe play area.
-  - **Playable area framing**: camera recenters using the HUD-safe play rect; **edge clamping** ray-tests the **play rect corners** on the ground (tilted ortho). At **minimum zoom**, bounds use a **zoom-scaled outset** so pan is usable; HUD margins may show slight overscan past the nominal board edge.
-  - **Zoom range**: allow closer zoom-in for inspecting squads/tiles.
-- **Window / display (MVP)**:
-  - **Resizable window**: stretch mode **canvas_items**, aspect **ignore**, scale mode **fractional** — enlarging the window **expands the rendered game area** edge-to-edge (no pillarboxing/letterboxing from stretch); orthographic framing uses the HUD-safe play rect and **refits on resize**.
-- **Phase clarity (MVP polish)**:
-  - **Debug**: **F3** or the **Debug** button toggles a panel that tweaks the main **directional light** (energy, shadows, bias, distance, color, specular).
-  - **Default sun**: height **-61°**, angle **330°**, energy **2.05**, shadows on (bias **0.068** / normal **1.75** / max dist **100**), specular **0.45**, white.
-  - **Esc**: opens an in-match **menu** (Resume / Restart Match / Quit).
-  - HUD shows an explicit **Phase** indicator: **Offer** vs **Action**.
-  - HUD shows a short **prompt** describing the expected next click for the current phase/mode.
-- **Invalid action feedback (MVP polish)**:
-  - Rejected clicks/actions show a short HUD **toast** (e.g. “Invalid move”, “Offer phase: pick a card or Skip”).
-- Clicking empty space:
-  - If in an action mode (Move/Melee/Ranged): exits back to Select.
-  - If already in Select: clears selection.
-- **Select → Move**: selecting an owned squad that still has basic Move available auto-enters **Move** mode (reachable cells highlighted).
-- **Squad inspection (MVP)**:
-  - HUD shows a minimal panel for the **selected squad** with its **unit list** (unit id, HP, ready turn) and current **cooldowns**.
-  - Clicking a unit in that list sets it as the squad’s **front unit** (reorders `units[]` so attacks/actions use that unit).
-- **Lightweight combat/world feedback (MVP polish)**:
-  - Hits briefly **flash** the damaged squad and show a small floating damage number.
-  - CP capture shows a brief “CAPTURE” popup + toast.
-  - Destroying an obstacle shows a brief “DESTROYED” popup + toast.
+## Field pickups (Gear & Eggs)
+- **Gear**: organ weapons scattered at board gen (**3–5** per map). Step onto gear to **field-graft** — works **anywhere**, bypasses **`organs_locked`**, respects hard **10** cap. Popped **reclaimable** organs become ground gear (step to reclaim). **Core / brood / anchor / curses** do not drop as gear. Scattered gear capped at **14** (farthest culled on overflow).
+- **Eggs**: **2–4** containers per map; step to attach contained organ (egg consumed). Pool mixes normal organs and **cursed** grafts (~**12%**): Rot Sac, Leech Coil, Static Lobe.
+- **Telegraph**: selected mutant highlights reachable pickups (stronger graft rings); organ-emoji gear, green/red **opaque egg ball** (contents hidden), red cursed egg; hover chip **STEP TO GRAFT** / **GRAFT — …**; **toast + GRAFT pop + burst/sparks + mutant mint punch** on graft; **leave-lock**: tip once + **amber LOCK egress** (one `LOCKED` pop per cell per move session).
+- **Demo AI**: rush / swarm / balanced detour toward pickups within **6** cells when under organ soft cap.
 
-## Networking (Authoritative, Web + Mobile)
-- **Goal**: strong anti-cheat + low bandwidth (send intents; server sim is truth).
-- **Transport**: `wss://` WebSockets for Godot web + mobile.
-- **Session**: synchronous 1v1 short match (5–10 min).
-- **Join flow**: room code (no accounts).
-  - Player A creates room → gets `room_code` + token.
-  - Player B joins room code → gets token.
-  - Only the two tokens may join the match socket.
-- **Server authority**:
-  - Server validates all moves/abilities/cooldowns/targets and publishes authoritative deltas.
-  - RNG (offers/draft) is server-owned.
-- **Protocol**: see `docs/networking-protocol.md` (v0).
-  - Client → server: `intent` with `{seq, turn, intent:{k,...}}`
-  - Server → clients: `patch` deltas (ops) + occasional `state` snapshots for resync/reconnect
-- **Vertical slice implemented**:
-  - Godot has a minimal net layer (`Network` autoload): HTTP create/join room → WS connect → send intents.
-  - Client applies server `state` + minimal `patch` ops (`set`/`inc`/`push`) and maps authoritative state into the existing offline `GameState` for rendering (squad **cells** and optional `pending_effects` / `board.hazards` when present; full unit stats stay **client-resolved** until the server sim grows).
-  - In net play, the **local Godot sim** still runs `Resolver` for actions (optimistic, same as offline); the server accepts matching intents for **turn**, **move**-class goals (`move`, `run`, `jump`, `blink`, `dash`, `pounce`), **switch**, **delayed** (echo `pending_effects` entry), and **plant** (append hazard), plus stubbed **attack** / legacy **melee**/**ranged** (no HP simulation on the server yet). See `docs/networking-protocol.md` for `intent.k` list.
+## Gene Pool (Offers)
+- **Opening (turns 1–2)**: each seat’s first turn is a 5-gene hand; place **2 of 5** (spawn/attach), or Skip remaining after the first place. Hand **hard-biases** teaching genes (**core/claw/eye/hoof/shell/plate/spring/chunk**) when inventory has ≥3; guarantees **core** + one combat gene when possible; prefers unique faces; **excludes** specialty (anchor/brood/spore/pod/phase/beacon/node/vent/spine/leap/synapse/ram/gland/…) when a simpler unused gene exists — **Anchor/Brood hard-banned** while any teach gene remains in inventory (re-applied after playability swaps).
+- **Later turns**: 3-gene offer (+ Skip) from remaining gene-pool inventory; **pick one** gene, or Skip. First post-opening offer toasts once: “Later offers: pick 1 gene — specialty unlocked.”
+- Playable now = spawnable **or** attachable (unlocked Mutant in Spawn Pool with capacity).
+- Deterministic from match seed + turn + active player; playability-filtered like Chess 2 offers.
 
-## Offline Save + Replay (MVP)
-- `GameState` supports a **minimal JSON snapshot** for offline loop testing and deterministic replays.
-- A `ReplayDriver` can load a snapshot and apply a list of intents (`move`, `attack`, `end_turn`, `play_card`, plus ability intents such as `run`, `blink`, `delayed`, …) deterministically.
-- **Turn timer**: 60s, server-owned.
-  - On expiry: server immediately executes end-turn (hard timeout).
+## Combat & Terrain (kept)
+- **Damage baselines** (1 chip = 1 organ HP unless noted): core **melee 1**, claw **melee 2**, eye **ranged 1**, shell **slam 1** AOE; dash **path 1**. Goal: ~6-organ stacks survive **~3 claw hits** (soil bonus still meaningful).
+- Soil: +1 melee damage (attacker). Rock: +1 ranged (attacker); −1 incoming ranged (defender, min 1). Sand: +1 move range.
+- **Eye**: `ranged` range **6**, **2** chip, cooldown **1** (once per your turn after act).
+- Obstacles: melee/ranged can damage **destructible blockers**; **hero props** (landmark mushrooms, blobs, rocks) are destructible and leave **loose debris** when destroyed.
+- Soil HP regen **disabled** (organs are discrete 1-HP parts).
+- **Hazards** (snare/mine): owner stepping on own trap does **not** disarm it; only enemies trigger and consume. Cannot plant on a cell that already has a hazard.
 
-## Data Model (High-level)
-- `GameState`: turn, activePlayer, board, squads, **pendingEffects** (delayed strikes), playerInventory
-- `Board`: size, tiles (terrain), obstacles, **hazards** (mines/snares), controlPoints
-- `Squad`: id, owner, cell(x,y), units[], cooldowns, **snaredNoMoveUntilTurn** (trap), freshTurn
-- `Unit`: unitDefId, hp, readyTurn; optional **armorFactor** on unit def reduces HP loss per hit
+## Rendering
+- World: 3D voxels; **K1 mood** = soft fungal mycelium checker (darker, low-contrast), rock as calcified mushroom stone, sand as spore crust; dark void backdrop.
+- Spawn pools: muted amber **slime-mold vein** pads with faint **beveled square** rim — not neon discs or hexes. Visible during **gene offer** only (turns 1–2 pulse bright mint on active seat); **hidden in action/move** so cyan reach + selection + amber egress stay readable. CP gold zone paint is **demoted** until that seat has ≥1 Mutant.
+- Obstacles: billboarded **weird mushroom** alpha sprites (6 species × 3 yaw frames; **frame follows camera yaw** + flip; slight scale jitter; destructible tint warmer). Per board, **4–6 hero props** are drawn from a larger pool (giant mushrooms, organic blobs, old rocks) as large landmark blockers.
+- Mutants: per-organ **dithered** emoji billboards in a **spaced** humanoid layout (yaw to camera); rematch-in-place on attach (no deferred free duplicates); soft depth jiggle; debug dither on/strength/levels; spring jiggle + hit impulse.
+- **Post dither**: fullscreen ordered Bayer (Elfenstein port) over the whole frame (3D + HUD + menus); F3 debug for strength / colour preserve / pixel / levels / matrix / palette / lift-gain-gamma; on by default.
+- **Move**: Mutants tween between cells with a hop + stride jiggle (not a hard snap).
+- **Hover**: mouse-near organ gets a stronger jiggle / scale punch.
+- **Organ death**: destroyed organs detach as `RigidBody3D` corpses onto the board floor and **stay** (**grayed** emoji tint — unusable debris, not loot); yellow-amber **particle splatter** at the pop + lasting **floor splat decal**; impact debris persists after settling. Field gear the selected mutant **cannot** graft (hard max / non-reclaimable) is **grayed** the same way.
+- **Ragdoll**: living Mutants use **jointed organ RigidBodies** — control mode freezes + jiggles; hits/abilities briefly ragdoll then **re-seat** to the cell pose (grid position never drifts).
+- **Battlefield juice**: ability resolve shoves force-tagged bodies (corpses + **settled debris**); light chunks (`force_light`) loft harder; living organs ragdoll separately. Heavy abilities spawn loose **cut mushroom-matter** billboard chunks; atmosphere = top **light shaft** + physics-reactive dust/clouds; **contact shadows** under organs/corpses/debris; pooled burst + hit sparks.
+- Readability: selection, reachables, attackables; amber **available-turn** cell tint + pulse rings on Mutants that still can move/act; mint attach rings when a gene is pending; gene-offer spawn highlights; **CP zones gold** (stronger 3×3 pads + bevel edges + beacon — demoted only until seat has a Mutant) vs **move reach cyan**; **ability telegraphs** — soft violet reach, amber impact AoE/line/path on hover, toxin-green trap plant, orange delayed footprints (full AoE); **Slam** arms with AoE telegraph and requires confirm (re-click self / press again); brief resolve cell flash; hover info chip + gene cartridge tooltips. **END** blinks when the seat has no eligible moves/actions; MOVE + ready abilities warm-highlight when usable. Destructible obstacles highlight orange in melee/ranged and pop `DESTROYED` when cleared.
+- **Control Points**: three CPs spaced **±5** from center on x; odd boards use mid-row, even boards nudge CP toward the **second** player (`h/2 - seed%2`) so first-player tempo cancels the shorter home→CP path; **3×3 capture zone** telegraphed on all 9 cells (CP + 8 neighbors); center beacon; flag meters; billboard state (`NEUTRAL` / `P# HELD` / `P# n/need` / `CONTESTED`).
+- **Camera**: ortho pan/zoom/rotate; **clamped to the board** (zoomed-out keeps playfield on-screen; zoom-out capped near fit). **Knockout sweep** on organ shed (Chillout exceptional-replay grammar). **Demo mode** auto-frames action cells.
+- **HUD (K1 wet-mud)**: board-first — dark low-contrast clay chrome (`wet_clay_canvas`, **pixel-stable** grain — no UV stretch); fake-3D **extrude rim** + contact shadow + stamp wells / embossed type; light type on slabs; phase plaque (`OFFER`/`ACTION` / TURN), twin extruded hex **ZONES** gems with **P1/P2** seat labels (`owned/need`), gene cartridges (face verb only; full blurb in tooltip), MOVE/END/ability keys (press **0.96**); squad inspect shows stack emojis when selected (clay backplate hides with panel); debug `…` is a tiny flat chip (dock collapsed when closed; hidden during offers). System sans for words.
+- **Pointer priority**: HUD chrome (`ui_blocks_board_hover`) owns hover — board cell highlight + organ jiggle clear while the cursor is over UI; action/gene/CP controls show amber hover feedback.
 
-## Content (implemented baseline)
-- **Modern roster** entries exist in `UnitDefs` (e.g. Ninja, Engineer, MRAP, Chunk, …) alongside legacy fantasy units (`soldier`, `archer`, …). Ability specs and resolved TBDs: `docs/planned-units-abilities.md`, `docs/abilities-spec.md`.
-- **Logistics / FOB**: unit defs may include tags `logistics` / `fob`; spawn card targeting unions extra empty cells near qualifying squads (Chebyshev 1 / orthogonal cross radius 2).
-
-## Out of Scope (for now)
-- Networking, matchmaking, progression/meta, content pipelines beyond placeholders.
-
+## Networking / Meta
+- **Web publish**: Godot HTML5 export (`export_presets.cfg` → `build/web/`) hosted on **Vercel** with COOP/COEP for threaded WASM (`vercel.json`; `tools/export_web.sh`).
+- Authoritative WS stack exists from Chess 2 fork; **not** required for this MVP organ slice.
+- **Main menu** (`MenuFlow.tscn`): **Hot-seat** (72-pt gene deck prep → match), **Demo** (AI vs AI loop + tempo), **Settings** (`user://settings.cfg`), **Exit**. **CRT-era rounded terminal** shell — amber phosphor, pill buttons, rounded bezel; **no** barrel distortion or scanlines; title shows one short readable line (“Hot-seat tactics — pass the device.”); main screen board vignette carries an **emoji mutant ghost**; Settings **FULLSCREEN / VSYNC** and Demo **tempo** pills: filled phosphor when ON/selected, outline when OFF; rules teaching lives on **opening prompt** + **first egress** toast + first **1-of-3** specialty toast. Dev skip: `--match` boots straight into `Main.tscn`.
+- **Demo AI** (`DemoAI.gd`): six styles — **rush** (ram-first, soft cap **2**, max **1** body, gap-close after turn **>10**), **kite** (one deep eye stack, soft **7**, shoot at **3–6**; flee ≤**2**; contest CP when foe >**2** away; railgun after eye), **tank** (plate×3, soft **5**, leave at **2** organs, second body after **2**, claw-before-shell, slam-first, peel ≤**7**, charge after turn **>3**, sit safe CP), **control** (dual gland + claw, spawn up to **3** bodies, soft **4**, snare→CP sit), **swarm** (soft **3**), **balanced** (soft **4**, max **2** bodies, no field-graft / no dash). Round-robin in `playtest_style_roundrobin.gd` (gates: control≥4, balanced≤6, rush≥3≤6, kite≥3, tank≥3, swarm≤9, CP≥8, max≤12); `playtest_30_matches` uses the same 15×2 pair schedule.
+- **Opening offer**: opening hand hard-biases teaching genes; prefers unique faces (keeps intentional **eye/hoof** doubles); unavoidable dups show **×N** on cartridges; teaching guarantee **core** + combat gene when inventory allows; specialty swapped out when simpler genes remain; **Skip** full-bright once allowed (dim but readable while locked). Cartridge blurbs use `Verb · detail` (e.g. `Melee · 2 dmg`, `Shoot · r6 / 2 dmg / cd1`); turn-1 offer prompt: **Pick 2 · place each on a glowing home pad — that becomes your Mutant.** (leave-lock teaching on **first-egress** toast only).
+- **Hot-seat prep**: default bay = style pills + specimen rack + Lock; gene **catalog** behind **Customize**; CLEAR is a text link (not a style pill). Rack packs existing gene cards left in HFlow (~4/row); readable sans for gene names + **GENE_BLURBS** `Verb · detail` under each cartridge.
+- **Mutant organs** read vs mushroom props via **2.2×** scale + soft team rim/tint + **team corner brackets** on the cell (idle α**0.22** / half**0.36**; selected α**0.42** / half**0.40**); availability/fresh rings stay soft single bevels; HP pip cubes match **team color**; mushrooms idle **α~0.72** (heroes ×**0.85**; on select/move ~**0.58**/0.48, heroes ×**0.70**) — alpha-cut scissor stays **below** modulate α so props stay visible. Eggs = opaque green/red balls (no content peek); gear = organ emoji only. Action-phase select prompt: **Select: Move or {ability}** + **Stack: {emoji list}**; ability keys show organ emoji. Ineligible act → toast + hover chip + board pop/flash + mutant warn pulse (`FRESH` / `SPENT` / `ENEMY` / `BLOCKED` / …).
+- First entry into a **CP zone** toasts once: “Hold 2 of 3 zones (flags add up).”
+- Out of scope: meta progression beyond in-match gene pool (except hot-seat deck editing).

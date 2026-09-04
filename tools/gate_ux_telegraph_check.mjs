@@ -67,15 +67,14 @@ function g0() {
 
 function g1() {
   const b = read("src/presentation/BoardView.gd");
-  const sync = b.slice(
-    b.indexOf("Telegraph full 3×3 capture zone"),
-    b.indexOf("Center beveled square")
-  );
-  if (!/alpha := 0\.22 if is_center else 0\.14/.test(sync)) {
-    throw new Error("CP idle alpha not strengthened");
+  if (!/var under_col :=/.test(b) || !/_add_cp_zone_perimeter/.test(b)) {
+    throw new Error("CP underlay/perimeter missing");
   }
-  if (!/edge_mat\.albedo_color = Color\([^)]+, 0\.78\)/.test(sync)) {
-    throw new Error("CP edge alpha weak");
+  if (!/alpha := 0\.42 if is_center else 0\.30/.test(b)) {
+    throw new Error("CP gold wash not strong enough");
+  }
+  if (!/base_mesh\.height = 0\.42/.test(b)) {
+    throw new Error("CP beacon not tall enough");
   }
   console.log("G1_OK");
 }

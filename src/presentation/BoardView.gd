@@ -637,83 +637,111 @@ func _sync_control_points(gs) -> void:
 		elif flagging_player == 1:
 			state_color = Color(0.95, 0.52, 0.42)
 
-		# Telegraph full 3×3 capture zone (CP + 8 neighbors).
-		# Demote gold until the active seat has at least one mutant (opening teach).
+		# Telegraph full 3×3 capture zone — dark underlay + gold wash so it reads vs mycelium tiles.
 		var demote := _cp_demote
 		var zone_cells: Array[Vector2i] = gs.board.cp_zone_cells(cp.cell)
+		var under_col := Color(0.08, 0.06, 0.04, 0.72 if not demote else 0.22)
 		for zone_cell in zone_cells:
 			var dx: int = zone_cell.x - cp.cell.x
 			var dy: int = zone_cell.y - cp.cell.y
 			var is_center: bool = dx == 0 and dy == 0
 			if demote and not is_center:
 				continue
+			# Dark plate under the gold so zones don't wash into light terrain.
+			var under := MeshInstance3D.new()
+			var under_mesh := BoxMesh.new()
+			under_mesh.size = Vector3(CELL_SIZE * 0.98, 0.028, CELL_SIZE * 0.98)
+			under.mesh = under_mesh
+			var under_mat := StandardMaterial3D.new()
+			under_mat.albedo_color = under_col
+			under_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			under_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			under.material_override = under_mat
+			under.position = Vector3(dx * CELL_SIZE, 0.108, dy * CELL_SIZE)
+			root.add_child(under)
+
 			var zone_pad := MeshInstance3D.new()
 			var zone_mesh := BoxMesh.new()
-			zone_mesh.size = Vector3(CELL_SIZE * 0.96, 0.032 if is_center else 0.026, CELL_SIZE * 0.96)
+			zone_mesh.size = Vector3(CELL_SIZE * 0.90, 0.034 if is_center else 0.028, CELL_SIZE * 0.90)
 			zone_pad.mesh = zone_mesh
 			var zone_mat := StandardMaterial3D.new()
-			var alpha := 0.22 if is_center else 0.14
+			var alpha := 0.42 if is_center else 0.30
 			if flagging_player >= 0 or contested:
-				alpha = 0.34 if is_center else 0.26
+				alpha = 0.58 if is_center else 0.44
 			elif owner_i >= 0:
-				alpha = 0.28 if is_center else 0.18
+				alpha = 0.50 if is_center else 0.36
 			if demote:
-				alpha *= 0.28
+				alpha *= 0.30
 			zone_mat.albedo_color = Color(state_color.r, state_color.g, state_color.b, alpha)
 			zone_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 			zone_mat.emission_enabled = true
 			zone_mat.emission = state_color
-			zone_mat.emission_energy_multiplier = (1.45 if is_center else 0.95) * (0.25 if demote else 1.0)
+			zone_mat.emission_energy_multiplier = (2.1 if is_center else 1.35) * (0.28 if demote else 1.0)
 			zone_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 			zone_pad.material_override = zone_mat
-			zone_pad.position = Vector3(dx * CELL_SIZE, 0.122 if is_center else 0.114, dy * CELL_SIZE)
+			zone_pad.position = Vector3(dx * CELL_SIZE, 0.128 if is_center else 0.120, dy * CELL_SIZE)
 			root.add_child(zone_pad)
 			if not is_center and not demote:
 				var edge := MeshInstance3D.new()
-				edge.mesh = K1Widgets.make_bevel_square_mesh(0.44, 0.026, 0.055)
+				edge.mesh = K1Widgets.make_bevel_square_mesh(0.46, 0.030, 0.06)
 				var edge_mat := StandardMaterial3D.new()
-				edge_mat.albedo_color = Color(state_color.r, state_color.g, state_color.b, 0.78)
+				edge_mat.albedo_color = Color(state_color.r, state_color.g, state_color.b, 0.92)
 				edge_mat.emission_enabled = true
 				edge_mat.emission = state_color
-				edge_mat.emission_energy_multiplier = 1.25
+				edge_mat.emission_energy_multiplier = 1.65
 				edge_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 				edge_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 				edge.material_override = edge_mat
-				edge.position = Vector3(dx * CELL_SIZE, 0.136, dy * CELL_SIZE)
+				edge.position = Vector3(dx * CELL_SIZE, 0.142, dy * CELL_SIZE)
 				root.add_child(edge)
+
+		if not demote:
+			_add_cp_zone_perimeter(root, state_color)
 
 		# Center beveled square (zone footprint).
 		var ring := MeshInstance3D.new()
-		ring.mesh = K1Widgets.make_bevel_square_mesh(0.48, 0.045, 0.06)
+		ring.mesh = K1Widgets.make_bevel_square_mesh(0.50, 0.052, 0.07)
 		var ring_mat := StandardMaterial3D.new()
-		ring_mat.albedo_color = Color(state_color.r, state_color.g, state_color.b, 0.88 if not demote else 0.22)
+		ring_mat.albedo_color = Color(state_color.r, state_color.g, state_color.b, 0.95 if not demote else 0.28)
 		ring_mat.emission_enabled = true
 		ring_mat.emission = state_color
-		ring_mat.emission_energy_multiplier = (1.85 if flagging_player >= 0 or contested else 1.15) * (0.22 if demote else 1.0)
+		ring_mat.emission_energy_multiplier = (2.4 if flagging_player >= 0 or contested else 1.7) * (0.25 if demote else 1.0)
 		ring_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 		ring_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 		ring.material_override = ring_mat
-		ring.position = Vector3(0, 0.145, 0)
+		ring.position = Vector3(0, 0.155, 0)
 		root.add_child(ring)
 
-		# ponytail: perimeter ring removed — square zone pads are enough at default zoom.
-
-		# Central beacon pillar (owner tint).
+		# Central beacon pillar (owner tint) — taller so CPs read at board zoom.
 		var base := MeshInstance3D.new()
 		var base_mesh := CylinderMesh.new()
-		base_mesh.top_radius = 0.12
-		base_mesh.bottom_radius = 0.18
-		base_mesh.height = 0.22
+		base_mesh.top_radius = 0.10
+		base_mesh.bottom_radius = 0.20
+		base_mesh.height = 0.42
 		base.mesh = base_mesh
 		var base_mat := StandardMaterial3D.new()
 		base_mat.albedo_color = owner_color
 		base_mat.emission_enabled = true
 		base_mat.emission = owner_color
-		base_mat.emission_energy_multiplier = 0.55 if not demote else 0.12
-		base_mat.roughness = 0.75
+		base_mat.emission_energy_multiplier = 1.35 if not demote else 0.18
+		base_mat.roughness = 0.65
 		base.material_override = base_mat
-		base.position = Vector3(0, 0.22, 0)
+		base.position = Vector3(0, 0.34, 0)
 		root.add_child(base)
+		var tip := MeshInstance3D.new()
+		var tip_mesh := SphereMesh.new()
+		tip_mesh.radius = 0.09
+		tip_mesh.height = 0.18
+		tip.mesh = tip_mesh
+		var tip_mat := StandardMaterial3D.new()
+		tip_mat.albedo_color = Color(state_color.r, state_color.g, state_color.b, 1.0)
+		tip_mat.emission_enabled = true
+		tip_mat.emission = state_color
+		tip_mat.emission_energy_multiplier = 2.8 if not demote else 0.35
+		tip_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		tip.material_override = tip_mat
+		tip.position = Vector3(0, 0.58, 0)
+		root.add_child(tip)
 
 		var p0_flags := int(cp.flags_for(0))
 		var p1_flags := int(cp.flags_for(1))
@@ -721,8 +749,8 @@ func _sync_control_points(gs) -> void:
 		var need1 := int(ResolverScript.CP_CAPTURE_FLAGS) + (1 if int(alive_by_owner.get(1, 0)) <= 1 else 0)
 
 		# Flag meters with empty slots so progress toward capture is readable.
-		_add_flag_meter(root, Vector3(-0.28, 0.28, 0.0), p0_flags, need0, Color(0.35, 0.85, 1.0))
-		_add_flag_meter(root, Vector3(0.28, 0.28, 0.0), p1_flags, need1, Color(1.0, 0.45, 0.45))
+		_add_flag_meter(root, Vector3(-0.32, 0.32, 0.0), p0_flags, need0, Color(0.35, 0.85, 1.0))
+		_add_flag_meter(root, Vector3(0.32, 0.32, 0.0), p1_flags, need1, Color(1.0, 0.45, 0.45))
 
 		# State label: owner + live contest/flagging progress.
 		var status := "CP"
@@ -745,12 +773,40 @@ func _sync_control_points(gs) -> void:
 
 		var label := _make_world_label(status, 0.0075, 42)
 		label.modulate = status_col
-		label.position = Vector3(0.0, 0.72, 0.0)
+		label.position = Vector3(0.0, 0.92, 0.0)
 		root.add_child(label)
 
 	for child in control_points_root.get_children():
 		if not alive_names.has(child.name):
 			child.queue_free()
+
+func _add_cp_zone_perimeter(parent: Node3D, color: Color) -> void:
+	## Outer 3×3 frame — one silhouette for the whole capture zone.
+	var half := 1.5 * CELL_SIZE
+	var thick := 0.055
+	var y := 0.148
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(color.r, color.g, color.b, 0.95)
+	mat.emission_enabled = true
+	mat.emission = color
+	mat.emission_energy_multiplier = 2.0
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	var sides: Array = [
+		[Vector3(0.0, y, -half), Vector3(half * 2.0 + thick, 0.03, thick)],
+		[Vector3(0.0, y, half), Vector3(half * 2.0 + thick, 0.03, thick)],
+		[Vector3(-half, y, 0.0), Vector3(thick, 0.03, half * 2.0 + thick)],
+		[Vector3(half, y, 0.0), Vector3(thick, 0.03, half * 2.0 + thick)],
+	]
+	for side_any in sides:
+		var side: Array = side_any
+		var mi := MeshInstance3D.new()
+		var box := BoxMesh.new()
+		box.size = side[1]
+		mi.mesh = box
+		mi.material_override = mat
+		mi.position = side[0]
+		parent.add_child(mi)
 
 func _add_flag_meter(parent: Node3D, origin: Vector3, count: int, need: int, color: Color) -> void:
 	var slots := clampi(need, 1, 10)

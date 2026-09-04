@@ -78,7 +78,9 @@ static func _load_font_file(path: String, color_bitmaps: bool) -> FontFile:
 	# Color emoji is CBDT/CBLC — must keep embedded bitmaps or glyphs vanish.
 	ff.disable_embedded_bitmaps = not color_bitmaps
 	ff.multichannel_signed_distance_field = false
-	ff.allow_system_fallback = false
+	# UI font: allow OS fallback on desktop for rare punctuation; Web still needs glyphs in-file.
+	# Emoji font: keep closed — Web has no usable system emoji, and OS color fonts are flaky.
+	ff.allow_system_fallback = not color_bitmaps
 	return ff
 
 static func apply_title_font(ctrl: Control, size: int = -1) -> void:

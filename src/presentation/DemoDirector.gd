@@ -78,7 +78,7 @@ func _run_one_match() -> void:
 	match_started.emit(idx, MatchSession.match_seed, s0, s1)
 	status_changed.emit("DEMO · MATCH %03d · %s vs %s" % [idx, s0, s1])
 	commentary_appended.emit([
-		"▸ Match %03d · %s vs %s · seed %d" % [idx, s0, s1, MatchSession.match_seed]
+		"> Match %03d · %s vs %s · seed %d" % [idx, s0, s1, MatchSession.match_seed]
 	])
 
 	var turns := 0
@@ -156,7 +156,7 @@ func _show_between_matches() -> void:
 	}
 	interstitial.emit(true, data)
 	var wtxt := "DRAW" if winner < 0 else "P%d" % (winner + 1)
-	commentary_appended.emit(["▸ %s wins (%s)" % [wtxt, reason]])
+	commentary_appended.emit(["> %s wins (%s)" % [wtxt, reason]])
 	var d: Dictionary = _delays()
 	var wait_s: float = float(d.get("between", 1.5))
 	var t := 0.0

@@ -243,16 +243,16 @@ func _rebuild_prep() -> void:
 	var foot := HBoxContainer.new()
 	foot.alignment = BoxContainer.ALIGNMENT_CENTER
 	foot.add_theme_constant_override("separation", 12)
-	var back := CrtMenuChrome.action_pill("← BACK", false)
+	var back := CrtMenuChrome.action_pill("<- BACK", false)
 	back.pressed.connect(_on_prep_back)
 	foot.add_child(back)
 	if _prep_mode == PrepMode.DRAFT:
 		var skip := CrtMenuChrome.action_pill("REROLL PACK", false)
 		skip.pressed.connect(_reroll_draft_pack)
 		foot.add_child(skip)
-	var lock_lbl := "LOCK · PASS TO P2 →" if _prep_player == 0 else "LOCK · READY"
+	var lock_lbl := "LOCK · PASS TO P2 ->" if _prep_player == 0 else "LOCK · READY"
 	if _prep_player == 1 and _p0_locked:
-		lock_lbl = "START MATCH →"
+		lock_lbl = "START MATCH ->"
 	_start_btn = CrtMenuChrome.action_pill(lock_lbl, true)
 	_start_btn.pressed.connect(_on_prep_primary)
 	foot.add_child(_start_btn)
@@ -637,7 +637,7 @@ func _show_pass_handoff() -> void:
 	K1Widgets.apply_body_font(sub, 12)
 	sub.add_theme_color_override("font_color", CrtMenuChrome.P1)
 	v.add_child(sub)
-	var go := CrtMenuChrome.action_pill("CONTINUE →", true)
+	var go := CrtMenuChrome.action_pill("CONTINUE ->", true)
 	go.pressed.connect(_begin_player_two_prep)
 	v.add_child(go)
 

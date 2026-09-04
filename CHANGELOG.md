@@ -9,7 +9,8 @@ This changelog is intentionally **concise**:
 
 ## Unreleased
 
-- **Fix (Web)**: bundle Noto Sans + Noto Color Emoji and use them for UI/emoji (Web has no system fonts — was tofu hex boxes + fallback sans).
+- **Fix**: mushroom/prop sprites plant on tile tops (`FIXED_Y` billboard + foot sink) — full billboard was tipping them toward the camera and floating feet.
+- **Fix (Web/UI)**: Noto Sans lacks arrow glyphs — UI uses ASCII `->`/`<-`; restore system fallback on the UI font for desktop.
 - **Infra**: Vercel output directory is committed `web/` (threaded WASM + COOP/COEP); `tools/export_web.sh` regenerates it.
 - **Infra**: GitHub repo + Web export preset and Vercel hosting scaffold (`tools/export_web.sh`, COOP/COEP headers).
 - **Test**: Main boot gate (`playtest_main_boot.tscn` / G0) instantiates `Main.tscn` so `Main.gd` parse errors fail CI — Board-only suites no longer hide them.

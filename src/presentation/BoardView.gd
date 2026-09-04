@@ -806,7 +806,7 @@ func _sync_pending_strike_ghosts(gs) -> void:
 				# Slightly raised so it reads over terrain, under float labels.
 				mi.position.y = 0.18
 				pending_ghosts_root.add_child(mi)
-		var label := _make_world_label("Δ%d → T%d" % [turns_left, resolve_at], 0.008, 48)
+		var label := _make_world_label("Δ%d -> T%d" % [turns_left, resolve_at], 0.008, 48)
 		label.position = Vector3((center.x + 0.5) * CELL_SIZE, 0.55, (center.y + 0.5) * CELL_SIZE)
 		label.modulate = Color(1.0, 0.85, 0.35, 1.0)
 		label.no_depth_test = true

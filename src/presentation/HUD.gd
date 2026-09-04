@@ -848,7 +848,7 @@ func set_offer(cards: Array, visible: bool, selected_id: String = "", playable_i
 			if left <= 0:
 				offer_title.text = "OPENING  2/2  ·  leave home locks attach"
 			else:
-				offer_title.text = "OPENING  %d/2  ·  glowing home pad → Mutant" % placed
+				offer_title.text = "OPENING  %d/2  ·  glowing home pad -> Mutant" % placed
 		else:
 			offer_title.text = "GENE TRAY — PICK 1"
 	var dup_counts: Dictionary = {}
@@ -1269,7 +1269,7 @@ func append_demo_commentary(lines: Array) -> void:
 			col = COL_CP0
 		elif line.begins_with("P2"):
 			col = COL_CP1
-		elif line.begins_with("—") or line.begins_with("▸"):
+		elif line.begins_with("—") or line.begins_with(">") or line.begins_with("▸"):
 			col = COL_AMBER_DIM
 		lbl.add_theme_color_override("font_color", col)
 		_demo_log_body.add_child(lbl)
@@ -1355,7 +1355,7 @@ func show_pass_interstitial(player: int, cp0: int, cp1: int) -> void:
 		K1Widgets.apply_body_font(hint, 9)
 		hint.add_theme_color_override("font_color", Color(COL_TEXT.r, COL_TEXT.g, COL_TEXT.b, 0.45))
 		vb.add_child(hint)
-	_pass_interstitial_lbl.text = "PASS → P%d  ·  CP %d–%d" % [player + 1, cp0, cp1]
+	_pass_interstitial_lbl.text = "PASS -> P%d  ·  CP %d–%d" % [player + 1, cp0, cp1]
 	_pass_interstitial.visible = true
 	var tw := create_tween()
 	tw.tween_interval(0.85)

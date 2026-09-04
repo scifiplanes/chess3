@@ -23,9 +23,13 @@ const DEFAULT_SIZE := GameStateScript.DEFAULT_BOARD_SIZE
 const CELL_SIZE := 1.0
 ## Top of voxel tiles (BoxMesh height 0.2 centered at y=0) — corpse collision / rest height.
 const CORPSE_FLOOR_Y := 0.11
+## Tile top face (cell BoxMesh y=0, height 0.2 → top at 0.1). Prop feet plant here.
+const PROP_FLOOR_Y := 0.10
+## Slight sink so PNG pad / alpha fringe doesn't read as a hover gap.
+const PROP_FOOT_SINK := 0.025
 const CORPSE_RADIUS := 0.12
 ## Mushroom obstacles: 6 species × 3 authored yaw frames (0° / 45° / 120°).
-## Camera rotation picks nearest frame (+ horizontal flip) so yaw reads while billboarded.
+## Camera yaw picks nearest frame (+ flip). Sprites use FIXED_Y billboard so feet stay planted.
 const MUSHROOM_SPECIES := 6
 const MUSHROOM_YAW_DEGS: Array[float] = [0.0, 45.0, 120.0]
 const MUSHROOM_PIXEL_SIZE := 0.00155
@@ -905,8 +909,14 @@ func _apply_hero_sprite(spr: Sprite3D, kind: String, variant: int, species_fallb
 	spr.texture = tex
 	var scale_m := spr.scale.y
 	var th := float(tex.get_height()) if tex != null else 192.0
-	var world_h := th * HERO_PROP_PIXEL_SIZE
-	spr.position = Vector3(0.0, CORPSE_FLOOR_Y + world_h * scale_m * 0.5, 0.0)
+	_plant_prop_sprite(spr, th * HERO_PROP_PIXEL_SIZE, scale_m)
+
+func _plant_prop_sprite(spr: Sprite3D, world_h_unscaled: float, scale_m: float) -> void:
+	## Centered Sprite3D: place so the quad's bottom sits on the tile (FIXED_Y keeps it upright).
+	if spr == null:
+		return
+	var world_h := world_h_unscaled * maxf(scale_m, 0.001)
+	spr.position = Vector3(0.0, PROP_FLOOR_Y + world_h * 0.5 - PROP_FOOT_SINK, 0.0)
 
 func _camera_view_yaw_deg() -> float:
 	var cam := get_viewport().get_camera_3d()
@@ -951,8 +961,7 @@ func _apply_mushroom_yaw_to_sprite(spr: Sprite3D, species: int, frame: int, flip
 	# Keep feet planted after texture swap (heights differ per frame).
 	var scale_m := spr.scale.y
 	var th := float(tex.get_height()) if tex != null else 700.0
-	var world_h := th * MUSHROOM_PIXEL_SIZE
-	spr.position = Vector3(0.0, CORPSE_FLOOR_Y + world_h * scale_m * 0.5, 0.0)
+	_plant_prop_sprite(spr, th * MUSHROOM_PIXEL_SIZE, scale_m)
 
 func _update_mushroom_yaw_frames(force: bool) -> void:
 	if obstacles_root == null or _mushroom_species_tex.is_empty():
@@ -1012,7 +1021,8 @@ func _sync_obstacles(gs) -> void:
 				child.queue_free()
 			spr = Sprite3D.new()
 			spr.name = "Mush"
-			spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+			# FIXED_Y: face camera in yaw only — full billboard tips toward a downward camera and floats feet.
+			spr.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y
 			spr.transparent = true
 			spr.alpha_cut = SpriteBase3D.ALPHA_CUT_DISCARD
 			# Must stay below idle modulate.a — scissor runs after modulate, so
@@ -1027,6 +1037,7 @@ func _sync_obstacles(gs) -> void:
 
 		# Keep cut below modulate α even for sprites created under the old 0.35 threshold.
 		spr.alpha_scissor_threshold = 0.08
+		spr.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y
 		spr.set_meta("facing_deg", facing)
 		var scale_m := _mushroom_scale_for_cell(c)
 		if hero_kind != "":
@@ -1042,8 +1053,7 @@ func _sync_obstacles(gs) -> void:
 			_apply_mushroom_yaw_to_sprite(spr, int(spr.get_meta("species", species)), pick.x, pick.y == 1)
 		elif spr.texture != null:
 			var th := float(spr.texture.get_height())
-			var world_h := th * spr.pixel_size
-			spr.position = Vector3(0.0, CORPSE_FLOOR_Y + world_h * scale_m * 0.5, 0.0)
+			_plant_prop_sprite(spr, th * spr.pixel_size, scale_m)
 		# Visible props; Mutants still win glance via 2.2× scale + floor disc + rim.
 		var mush_a := 0.72
 		var no_sel := int(gs.selected_squad_id) < 0

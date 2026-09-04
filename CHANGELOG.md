@@ -9,6 +9,7 @@ This changelog is intentionally **concise**:
 
 ## Unreleased
 
+- **Fix (Web)**: bundle Noto Sans + Noto Color Emoji and use them for UI/emoji (Web has no system fonts — was tofu hex boxes + fallback sans).
 - **Infra**: Vercel output directory is committed `web/` (threaded WASM + COOP/COEP); `tools/export_web.sh` regenerates it.
 - **Infra**: GitHub repo + Web export preset and Vercel hosting scaffold (`tools/export_web.sh`, COOP/COEP headers).
 - **Test**: Main boot gate (`playtest_main_boot.tscn` / G0) instantiates `Main.tscn` so `Main.gd` parse errors fail CI — Board-only suites no longer hide them.

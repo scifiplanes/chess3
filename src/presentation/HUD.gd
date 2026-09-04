@@ -133,6 +133,7 @@ var _hover_label: Label
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	K1Widgets.install_ui_theme(self)
 	_build_k1_widgets()
 	_apply_k1_chrome()
 	_register_ui_hover_blockers()

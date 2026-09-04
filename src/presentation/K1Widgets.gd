@@ -24,8 +24,12 @@ const MOSS_FLECK := Color(0.32, 0.40, 0.22, 1.0)
 const TEXT_ON_CLAY := Color(0.96, 0.92, 0.82, 1.0)
 
 const CLAY_SHADER_PATH := "res://shaders/wet_clay_canvas.gdshader"
+## Bundled UI + emoji fonts — Web has no SystemFont / OS emoji fallback.
+const FONT_UI_PATH := "res://assets/fonts/NotoSans-Regular.ttf"
+const FONT_EMOJI_PATH := "res://assets/fonts/NotoColorEmoji.ttf"
 
 static var _font_readable: Font
+static var _font_emoji: Font
 static var _clay_shader: Shader
 
 static func font_title() -> Font:
@@ -34,15 +38,48 @@ static func font_title() -> Font:
 static func font_body() -> Font:
 	return font_readable()
 
+static func font_emoji() -> Font:
+	if _font_emoji == null:
+		_font_emoji = _load_font_file(FONT_EMOJI_PATH, true)
+	return _font_emoji
+
 static func font_readable() -> Font:
 	if _font_readable == null:
-		var sf := SystemFont.new()
-		sf.font_names = PackedStringArray(["Helvetica Neue", "Helvetica", "Arial", "sans-serif"])
-		_font_readable = sf
+		var base: Font = _load_font_file(FONT_UI_PATH, false)
+		if base == null:
+			# Desktop editor convenience only — Web cannot resolve system fonts.
+			var sf := SystemFont.new()
+			sf.font_names = PackedStringArray(["Helvetica Neue", "Helvetica", "Arial", "sans-serif"])
+			base = sf
+		var emoji := font_emoji()
+		if emoji != null:
+			var fv := FontVariation.new()
+			fv.base_font = base
+			var fb: Array[Font] = [emoji]
+			fv.fallbacks = fb
+			_font_readable = fv
+		else:
+			_font_readable = base
 	return _font_readable if _font_readable != null else ThemeDB.fallback_font
 
 static func font_display() -> Font:
 	return font_readable()
+
+static func _load_font_file(path: String, color_bitmaps: bool) -> FontFile:
+	# Prefer filesystem check — fresh .ttf may not be in ResourceLoader until imported.
+	if path == "" or not (FileAccess.file_exists(path) or ResourceLoader.exists(path)):
+		push_warning("K1Widgets: missing font %s" % path)
+		return null
+	var ff := FontFile.new()
+	var err := ff.load_dynamic_font(path)
+	if err != OK:
+		push_warning("K1Widgets: failed to load font %s (%s)" % [path, error_string(err)])
+		return null
+	# Color emoji is CBDT/CBLC — must keep embedded bitmaps or glyphs vanish.
+	ff.disable_embedded_bitmaps = not color_bitmaps
+	ff.multichannel_signed_distance_field = false
+	ff.allow_system_fallback = false
+	return ff
 
 static func apply_title_font(ctrl: Control, size: int = -1) -> void:
 	apply_readable_font(ctrl, size)
@@ -65,6 +102,15 @@ static func apply_label3d_font(label: Label3D) -> void:
 	if label == null:
 		return
 	label.font = font_readable()
+
+static func install_ui_theme(root: Control) -> void:
+	## Project-wide default so Labels/Buttons without explicit overrides still get Noto + emoji.
+	if root == null:
+		return
+	var t := Theme.new()
+	t.default_font = font_readable()
+	t.default_font_size = 14
+	root.theme = t
 
 static func _clay_sh() -> Shader:
 	if _clay_shader == null:

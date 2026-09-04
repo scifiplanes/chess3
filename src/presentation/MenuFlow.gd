@@ -53,6 +53,7 @@ var _corner_panels: Array[PanelContainer] = []
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	K1Widgets.install_ui_theme(self)
 	var built: Dictionary = CrtMenuChrome.build_root(self)
 	_crt_screen = built["screen"] as MarginContainer
 	_crt_layer = built["layer"] as Control
@@ -82,7 +83,8 @@ func _add_main_mutant_ghost() -> void:
 	]
 	ghost.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	ghost.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	ghost.add_theme_font_size_override("font_size", 68)
+	# Must use bundled Noto (+ emoji fallback) — Web has no system emoji font.
+	K1Widgets.apply_body_font(ghost, 68)
 	ghost.modulate = Color(CrtMenuChrome.PHOSPHOR.r, CrtMenuChrome.PHOSPHOR.g, CrtMenuChrome.PHOSPHOR.b, 0.48)
 	ghost.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	ghost.set_anchors_preset(Control.PRESET_CENTER)

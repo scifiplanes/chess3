@@ -22,7 +22,7 @@ export.cfg
 *.tmp
 *.swp
 
-# Build outputs (web export → build/web/)
+# Build outputs (committed web/ is the Vercel outputDirectory)
 bin/
 build/
 dist/

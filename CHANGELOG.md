@@ -9,6 +9,7 @@ This changelog is intentionally **concise**:
 
 ## Unreleased
 
+- **Infra**: Vercel output directory is committed `web/` (threaded WASM + COOP/COEP); `tools/export_web.sh` regenerates it.
 - **Infra**: GitHub repo + Web export preset and Vercel hosting scaffold (`tools/export_web.sh`, COOP/COEP headers).
 - **Test**: Main boot gate (`playtest_main_boot.tscn` / G0) instantiates `Main.tscn` so `Main.gd` parse errors fail CI — Board-only suites no longer hide them.
 - **UX**: CP 3×3 zones brighter (pads/edges/beacon); END **blinks** when no acts left; MOVE/ready abilities highlight when eligible; Slam needs confirm (AoE telegraph → click self / press again); obstacle hits pop HP/`DESTROYED`.

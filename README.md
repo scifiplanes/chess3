@@ -17,10 +17,10 @@ Open the project in Godot 4.7 and press Play (`MenuFlow.tscn`).
 Threaded WebAssembly needs cross-origin isolation. `vercel.json` sets `COOP` / `COEP` / `CORP`.
 
 ```bash
-# Export only → build/web/
+# Export → web/ (then commit + push so Vercel can deploy)
 bash tools/export_web.sh
 
-# Export + production deploy (needs Vercel CLI login / linked project)
+# Or export + CLI production deploy
 bash tools/export_web.sh --deploy
 ```
 
@@ -28,7 +28,7 @@ Requires Godot **4.7.x** with **Web** export templates installed (`Editor → Ma
 
 ### Git-connected Vercel
 
-Point the Vercel project at this repo with **Output Directory** `build/web`. The build must already exist (run `tools/export_web.sh` in CI or deploy the folder with the CLI above). Vercel’s default cloud build does not run Godot.
+`vercel.json` sets **Output Directory** to `web`. That folder is committed (Vercel does not run Godot). Re-export and push whenever the game build should update.
 
 ## Docs
 

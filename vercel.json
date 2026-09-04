@@ -1,9 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
-  "installCommand": "echo skip",
-  "buildCommand": "echo 'Pre-export with: bash tools/export_web.sh'",
-  "outputDirectory": "build/web",
+  "installCommand": "",
+  "buildCommand": "",
+  "outputDirectory": "web",
   "headers": [
     {
       "source": "/(.*)",

@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # Export Chess 3 for Web and optionally deploy the static build to Vercel.
 #
-#   tools/export_web.sh            # export only → build/web/
+#   tools/export_web.sh            # export only → web/
 #   tools/export_web.sh --deploy   # export + vercel deploy --prod
 #
 # Override Godot with GODOT=/path/to/Godot (expects 4.7.x + web export templates).
+# After export, commit web/ so Git-connected Vercel deploys have an output directory.
 
 set -euo pipefail
 
@@ -12,7 +13,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
 PRESET="Web"
-OUT_DIR="build/web"
+OUT_DIR="web"
 OUT_HTML="${OUT_DIR}/index.html"
 
 DEPLOY=0
@@ -66,9 +67,7 @@ echo "Using Godot: $GODOT_BIN ($VERSION)"
 
 mkdir -p "$OUT_DIR"
 # Keep Godot from importing/scanning export artifacts as project assets.
-if [[ ! -f build/.gdignore ]]; then
-	printf '# Ignore export output from Godot filesystem scanner.\n' > build/.gdignore
-fi
+printf '# Ignore export output from Godot filesystem scanner.\n' > "${OUT_DIR}/.gdignore"
 
 echo "Exporting preset \"$PRESET\" → $OUT_HTML"
 "$GODOT_BIN" --headless --path "$ROOT" --export-release "$PRESET" "$OUT_HTML"
@@ -80,8 +79,15 @@ fi
 
 find "$OUT_DIR" -name '*.import' -delete
 
-# Embed hosting headers next to the build (CLI deploy of this folder alone).
-cp "$ROOT/vercel.json" "${OUT_DIR}/vercel.json"
+# Headers-only config for `vercel deploy --cwd web` (root vercel.json drives Git deploys).
+python3 - <<'PY'
+import json
+from pathlib import Path
+root = Path("vercel.json")
+cfg = json.loads(root.read_text())
+slim = {"headers": cfg.get("headers", [])}
+Path("web/vercel.json").write_text(json.dumps(slim, indent=2) + "\n")
+PY
 
 echo "Export OK:"
 ls -lh "$OUT_DIR" | sed -n '1,20p'

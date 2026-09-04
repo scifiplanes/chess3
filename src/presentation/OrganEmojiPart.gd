@@ -140,8 +140,8 @@ func _ensure() -> void:
 	_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	# Bundled Noto Color Emoji — required on Web (no OS emoji fallback).
-	K1Widgets.apply_body_font(_label, 52)
+	# Emoji-capable font only on this label (color-emoji must not be the global UI font).
+	K1Widgets.apply_emoji_font(_label, 52)
 	_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_vp.add_child(_label)
 

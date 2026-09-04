@@ -74,7 +74,7 @@ func _ready() -> void:
 		_launch_match_direct()
 
 func _add_main_mutant_ghost() -> void:
-	# Obvious mutant silhouette on the CRT board vignette (phosphor ghost).
+	# Faint phosphor ghost behind the menu — color-emoji metrics are huge, keep small + dim.
 	var ghost := Label.new()
 	ghost.text = "%s\n%s%s" % [
 		UnitDefsScript.emoji_for("eye"),
@@ -83,15 +83,15 @@ func _add_main_mutant_ghost() -> void:
 	]
 	ghost.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	ghost.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	# Must use bundled Noto (+ emoji fallback) — Web has no system emoji font.
-	K1Widgets.apply_body_font(ghost, 68)
-	ghost.modulate = Color(CrtMenuChrome.PHOSPHOR.r, CrtMenuChrome.PHOSPHOR.g, CrtMenuChrome.PHOSPHOR.b, 0.48)
+	K1Widgets.apply_emoji_font(ghost, 36)
+	ghost.modulate = Color(CrtMenuChrome.PHOSPHOR.r, CrtMenuChrome.PHOSPHOR.g, CrtMenuChrome.PHOSPHOR.b, 0.22)
 	ghost.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ghost.z_index = -1
 	ghost.set_anchors_preset(Control.PRESET_CENTER)
-	ghost.offset_left = -100.0
-	ghost.offset_right = 100.0
-	ghost.offset_top = -120.0
-	ghost.offset_bottom = 60.0
+	ghost.offset_left = -70.0
+	ghost.offset_right = 70.0
+	ghost.offset_top = -160.0
+	ghost.offset_bottom = -40.0
 	_crt_layer.add_child(ghost)
 
 func _launch_match_direct() -> void:
@@ -443,7 +443,7 @@ func _rack_cartridge(gid: String, count: int, accent: Color, can_remove: bool) -
 	var emoji := Label.new()
 	emoji.text = UnitDefsScript.emoji_for(gid)
 	emoji.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	K1Widgets.apply_body_font(emoji, 22)
+	K1Widgets.apply_emoji_font(emoji, 22)
 	v.add_child(emoji)
 	var name_l := Label.new()
 	name_l.text = str(DeckRulesScript.GENE_NAMES.get(gid, gid))
@@ -493,7 +493,7 @@ func _catalog_tile(gid: String, accent: Color) -> Button:
 		int(DeckRulesScript.GENE_COSTS.get(gid, 0)),
 		(" ·×%d" % n) if n > 0 else "",
 	]
-	K1Widgets.apply_body_font(b, 9)
+	K1Widgets.apply_mixed_emoji_font(b, 9)
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color(0.07, 0.065, 0.06, 0.92)
 	sb.border_color = Color(accent.r, accent.g, accent.b, 0.55)
@@ -517,7 +517,7 @@ func _draft_pick_card(gid: String, accent: Color) -> Button:
 		str(DeckRulesScript.GENE_NAMES.get(gid, gid)),
 		int(DeckRulesScript.GENE_COSTS.get(gid, 0)),
 	]
-	K1Widgets.apply_body_font(b, 11)
+	K1Widgets.apply_mixed_emoji_font(b, 11)
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color(0.08, 0.07, 0.06, 0.95)
 	sb.border_color = accent
@@ -753,6 +753,7 @@ func _save_settings_and_main() -> void:
 	if _skip_pass_toggle:
 		GameSettings.skip_pass_interstitial = _skip_pass_toggle.button_pressed
 	GameSettings.save_settings()
+	GameSettings.apply_display()
 	_show_main()
 
 func _toast_msg(msg: String) -> void:

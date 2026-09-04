@@ -497,7 +497,18 @@ func _leave_demo_to_menu() -> void:
 		_demo_director.request_exit_menu()
 	demo_mode = false
 	MatchSession.reset()
-	get_tree().change_scene_to_packed(MenuFlowScene)
+	# Deferred: HTML5 can drop sync change_scene from a Button.pressed mid-frame.
+	get_tree().change_scene_to_packed.call_deferred(MenuFlowScene)
+
+func _on_menu_quit() -> void:
+	if demo_mode:
+		_leave_demo_to_menu()
+		return
+	# Web: quit() is a no-op / blank tab — return to menu instead.
+	if OS.has_feature("web"):
+		get_tree().change_scene_to_packed.call_deferred(MenuFlowScene)
+		return
+	get_tree().quit()
 
 func _on_demo_tempo(tempo: String) -> void:
 	if _demo_director:
@@ -564,6 +575,17 @@ func _try_start_network_from_args() -> void:
 		var rc := net_arg.substr(5).strip_edges().to_upper()
 		net.join_room(rc)
 
+func _input(event: InputEvent) -> void:
+	# Before GUI: Esc dismisses first-match rules even if Got it has focus.
+	if event is InputEventKey:
+		var k := event as InputEventKey
+		if k.pressed and not k.echo and k.keycode == KEY_ESCAPE:
+			if hud and hud.has_method("is_rules_overlay_visible") and bool(hud.is_rules_overlay_visible()):
+				if hud.has_method("dismiss_rules_overlay"):
+					hud.dismiss_rules_overlay()
+				get_viewport().set_input_as_handled()
+				return
+
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey:
 		var k := event as InputEventKey
@@ -616,12 +638,6 @@ func _on_menu_restart() -> void:
 		return
 	_restart_match()
 	_on_menu_resume()
-
-func _on_menu_quit() -> void:
-	if demo_mode:
-		_leave_demo_to_menu()
-		return
-	get_tree().quit()
 
 func _on_debug_spawn_mutant() -> void:
 	if gs == null or gs.board == null:
@@ -1511,6 +1527,14 @@ func _on_offer_card_pressed(unit_def_id: String, offer_index: int) -> void:
 	if not bool(gs.offer_pending):
 		return
 	if str(unit_def_id).strip_edges() == "":
+		return
+	if not _offer_card_playable(unit_def_id):
+		if int(gs.player_inventory.get(gs.active_player, {}).get(unit_def_id, 0)) <= 0:
+			_toast("Not in your gene pool")
+		elif rules.spawn_cells(gs, gs.active_player).is_empty():
+			_toast("No empty home pads")
+		else:
+			_toast("Can't place that gene now")
 		return
 	pending_card_unit_def_id = unit_def_id
 	pending_card_offer_index = int(offer_index)

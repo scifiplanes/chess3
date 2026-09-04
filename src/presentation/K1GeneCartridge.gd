@@ -61,7 +61,8 @@ func set_offer_state(active: bool, selected: bool, playable: bool) -> void:
 	_placement_active = active
 	_selected = selected
 	_playable = playable
-	disabled = def_id == "" or (active and not playable)
+	# Keep clickable so a press can toast why (disabled Buttons swallow input on Web).
+	disabled = def_id == ""
 	_refresh_hover_look()
 	queue_redraw()
 
@@ -100,6 +101,10 @@ func _hot() -> bool:
 	return (is_hovered() or _hovering) and not disabled and def_id != ""
 
 func _refresh_hover_look() -> void:
+	if _placement_active and not _playable and def_id != "":
+		modulate = Color(0.62, 0.6, 0.56, 0.9)
+		scale = Vector2.ONE
+		return
 	if _selected:
 		modulate = Color(1.12, 1.06, 0.9, 1.0)
 		scale = Vector2(1.06, 1.06)
@@ -116,7 +121,7 @@ func _ensure_labels() -> void:
 		_emoji_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_emoji_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		_emoji_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		K1Widgets.apply_body_font(_emoji_label, 32)
+		K1Widgets.apply_emoji_font(_emoji_label, 32)
 		_emoji_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		_emoji_label.offset_top = 24
 		_emoji_label.offset_bottom = -42

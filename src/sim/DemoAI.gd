@@ -829,7 +829,7 @@ func _try_dash(gs, sid: int, style: int) -> bool:
 	resolver.use_dash(gs, sid, best)
 	s = gs.get_squad(sid)
 	if s != null and s.cell != before:
-		_log("%s dashes %s → %s" % [
+		_log("%s dashes %s -> %s" % [
 			_player_tag(gs),
 			DemoCommentaryScript.squad_tag(sid),
 			DemoCommentaryScript.cell_str(s.cell),
@@ -889,7 +889,7 @@ func _try_run(gs, sid: int, style: int) -> bool:
 	resolver.use_run(gs, sid, best)
 	s = gs.get_squad(sid)
 	if s != null and s.cell != before:
-		_log("%s runs %s → %s" % [
+		_log("%s runs %s -> %s" % [
 			_player_tag(gs),
 			DemoCommentaryScript.squad_tag(sid),
 			DemoCommentaryScript.cell_str(s.cell),
@@ -1061,7 +1061,7 @@ func _try_basic_move(gs, sid: int, style: int) -> bool:
 	s = gs.get_squad(sid)
 	if s == null or s.cell == before:
 		return false
-	_log("%s moves %s → %s" % [
+	_log("%s moves %s -> %s" % [
 		_player_tag(gs),
 		DemoCommentaryScript.cell_str(before),
 		DemoCommentaryScript.cell_str(s.cell),

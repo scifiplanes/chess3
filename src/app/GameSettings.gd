@@ -62,6 +62,10 @@ func save_settings() -> void:
 	cfg.set_value("tutorial", "seen_specialty_offer", seen_specialty_offer_tip)
 	cfg.set_value("hotseat", "skip_pass_interstitial", skip_pass_interstitial)
 	cfg.save(PATH)
+	# Display apply is intentional from settings UI / boot only — not every tutorial flag write
+	# (HTML5 window mode thrash can drop input / resize the canvas mid-click).
+
+func apply_display() -> void:
 	_apply_display()
 
 func _apply_display() -> void:

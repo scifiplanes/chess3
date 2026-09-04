@@ -12,6 +12,7 @@ GATES.md
 .godot/
 .import/
 *.import
+!assets/fonts/*.import
 export.cfg
 
 # Mono/C#

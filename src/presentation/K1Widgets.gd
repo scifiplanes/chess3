@@ -24,12 +24,13 @@ const MOSS_FLECK := Color(0.32, 0.40, 0.22, 1.0)
 const TEXT_ON_CLAY := Color(0.96, 0.92, 0.82, 1.0)
 
 const CLAY_SHADER_PATH := "res://shaders/wet_clay_canvas.gdshader"
-## Bundled UI + emoji fonts — Web has no SystemFont / OS emoji fallback.
-const FONT_UI_PATH := "res://assets/fonts/NotoSans-Regular.ttf"
-const FONT_EMOJI_PATH := "res://assets/fonts/NotoColorEmoji.ttf"
+## Bundled fonts (imported FontFile). Never FontVariation-chain color emoji into the theme default.
+const FONT_UI := preload("res://assets/fonts/NotoSans-Regular.ttf")
+const FONT_EMOJI := preload("res://assets/fonts/NotoColorEmoji.ttf")
 
 static var _font_readable: Font
 static var _font_emoji: Font
+static var _font_with_emoji: Font
 static var _clay_shader: Shader
 
 static func font_title() -> Font:
@@ -40,48 +41,32 @@ static func font_body() -> Font:
 
 static func font_emoji() -> Font:
 	if _font_emoji == null:
-		_font_emoji = _load_font_file(FONT_EMOJI_PATH, true)
+		_font_emoji = FONT_EMOJI
 	return _font_emoji
 
 static func font_readable() -> Font:
 	if _font_readable == null:
-		var base: Font = _load_font_file(FONT_UI_PATH, false)
-		if base == null:
-			# Desktop editor convenience only — Web cannot resolve system fonts.
-			var sf := SystemFont.new()
-			sf.font_names = PackedStringArray(["Helvetica Neue", "Helvetica", "Arial", "sans-serif"])
-			base = sf
-		var emoji := font_emoji()
-		if emoji != null:
-			var fv := FontVariation.new()
-			fv.base_font = base
-			var fb: Array[Font] = [emoji]
-			fv.fallbacks = fb
-			_font_readable = fv
-		else:
-			_font_readable = base
+		# Always ship Noto Sans — Web has no SystemFont; desktop benefits from the same glyphs.
+		_font_readable = FONT_UI
 	return _font_readable if _font_readable != null else ThemeDB.fallback_font
+
+static func font_with_emoji() -> Font:
+	## Pure emoji Labels (ghost, organ billboards, cartridge face).
+	var emoji := font_emoji()
+	return emoji if emoji != null else font_readable()
+
+static func font_mixed_ui_emoji() -> Font:
+	## Latin + emoji for controls that show both (catalog tiles). Isolated — never theme-wide.
+	if _font_with_emoji == null:
+		var fv := FontVariation.new()
+		fv.base_font = font_readable()
+		var fb: Array[Font] = [font_emoji()]
+		fv.fallbacks = fb
+		_font_with_emoji = fv
+	return _font_with_emoji if _font_with_emoji != null else font_readable()
 
 static func font_display() -> Font:
 	return font_readable()
-
-static func _load_font_file(path: String, color_bitmaps: bool) -> FontFile:
-	# Prefer filesystem check — fresh .ttf may not be in ResourceLoader until imported.
-	if path == "" or not (FileAccess.file_exists(path) or ResourceLoader.exists(path)):
-		push_warning("K1Widgets: missing font %s" % path)
-		return null
-	var ff := FontFile.new()
-	var err := ff.load_dynamic_font(path)
-	if err != OK:
-		push_warning("K1Widgets: failed to load font %s (%s)" % [path, error_string(err)])
-		return null
-	# Color emoji is CBDT/CBLC — must keep embedded bitmaps or glyphs vanish.
-	ff.disable_embedded_bitmaps = not color_bitmaps
-	ff.multichannel_signed_distance_field = false
-	# UI font: allow OS fallback on desktop for rare punctuation; Web still needs glyphs in-file.
-	# Emoji font: keep closed — Web has no usable system emoji, and OS color fonts are flaky.
-	ff.allow_system_fallback = not color_bitmaps
-	return ff
 
 static func apply_title_font(ctrl: Control, size: int = -1) -> void:
 	apply_readable_font(ctrl, size)
@@ -100,13 +85,27 @@ static func apply_readable_font(ctrl: Control, size: int = -1) -> void:
 	if size > 0:
 		ctrl.add_theme_font_size_override("font_size", size)
 
+static func apply_emoji_font(ctrl: Control, size: int = -1) -> void:
+	if ctrl == null:
+		return
+	ctrl.add_theme_font_override("font", font_with_emoji())
+	if size > 0:
+		ctrl.add_theme_font_size_override("font_size", size)
+
+static func apply_mixed_emoji_font(ctrl: Control, size: int = -1) -> void:
+	if ctrl == null:
+		return
+	ctrl.add_theme_font_override("font", font_mixed_ui_emoji())
+	if size > 0:
+		ctrl.add_theme_font_size_override("font_size", size)
+
 static func apply_label3d_font(label: Label3D) -> void:
 	if label == null:
 		return
 	label.font = font_readable()
 
 static func install_ui_theme(root: Control) -> void:
-	## Project-wide default so Labels/Buttons without explicit overrides still get Noto + emoji.
+	## Default theme = Latin UI font only (no color-emoji chain).
 	if root == null:
 		return
 	var t := Theme.new()

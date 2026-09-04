@@ -827,9 +827,12 @@ func set_offer(cards: Array, visible: bool, selected_id: String = "", playable_i
 	if not visible:
 		_refresh_hover_chip()
 		return
-	if _hover_cache.begins_with("Gene cartridges"):
-		_hover_cache = ""
+	# Keys/hover chip sits on the gene tray — hide while offering.
+	_hover_cache = ""
 	_refresh_hover_chip()
+	if offer_panel:
+		offer_panel.z_index = 24
+		offer_panel.move_to_front()
 	var offer_title := get_node_or_null("OfferPanel/VBox/Title") as Label
 	if offer_skip:
 		# Opening hand (5 cards): Skip locked until at least one gene placed.
@@ -899,11 +902,23 @@ func set_phase_and_prompt(phase_text: String, prompt_text: String) -> void:
 	_refresh_prompt_chip()
 
 func set_menu_visible(on: bool) -> void:
+	if on and is_rules_overlay_visible():
+		return
 	if main_menu:
 		main_menu.visible = on
 
 func is_menu_visible() -> bool:
 	return main_menu != null and main_menu.visible
+
+func is_rules_overlay_visible() -> bool:
+	return _rules_overlay != null and _rules_overlay.visible
+
+func dismiss_rules_overlay() -> void:
+	if _rules_overlay == null:
+		return
+	_rules_overlay.visible = false
+	GameSettings.seen_rules_overlay = true
+	GameSettings.save_settings()
 
 func clear_ability_buttons() -> void:
 	if ability_bar == null:
@@ -1112,7 +1127,7 @@ func setup_demo_overlay() -> void:
 	top.add_child(top_row)
 	_demo_status = Label.new()
 	_demo_status.text = "DEMO"
-	K1Widgets.apply_body_font(_demo_status, 13)
+	K1Widgets.apply_mixed_emoji_font(_demo_status, 13)
 	_demo_status.add_theme_color_override("font_color", COL_AMBER)
 	_demo_status.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top_row.add_child(_demo_status)
@@ -1263,7 +1278,7 @@ func append_demo_commentary(lines: Array) -> void:
 		var lbl := Label.new()
 		lbl.text = line
 		lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		K1Widgets.apply_body_font(lbl, 11)
+		K1Widgets.apply_mixed_emoji_font(lbl, 11)
 		var col := COL_TEXT
 		if line.begins_with("P1"):
 			col = COL_CP0
@@ -1296,18 +1311,45 @@ func demo_commentary_nonempty() -> bool:
 func show_first_match_rules_overlay() -> void:
 	if _rules_overlay != null:
 		_rules_overlay.visible = true
+		_rules_overlay.move_to_front()
 		return
+	# Full-screen modal so board/menu cannot steal clicks under the card.
 	_rules_overlay = PanelContainer.new()
-	_rules_overlay.set_anchors_preset(Control.PRESET_CENTER)
-	_rules_overlay.offset_left = -220
-	_rules_overlay.offset_top = -120
-	_rules_overlay.offset_right = 220
-	_rules_overlay.offset_bottom = 120
-	_rules_overlay.add_theme_stylebox_override("panel", K1Widgets.metal_box(false, 12.0, COL_AMBER))
+	_rules_overlay.name = "RulesOverlay"
+	_rules_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_rules_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	_rules_overlay.z_index = 64
+	_rules_overlay.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
+	_rules_overlay.add_to_group("ui_blocks_board_hover")
 	add_child(_rules_overlay)
+	_rules_overlay.move_to_front()
+
+	var dim := ColorRect.new()
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dim.color = Color(0.02, 0.03, 0.05, 0.72)
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	dim.gui_input.connect(func(ev: InputEvent) -> void:
+		if ev is InputEventMouseButton:
+			var mb := ev as InputEventMouseButton
+			if mb.pressed and mb.button_index == MOUSE_BUTTON_LEFT:
+				dismiss_rules_overlay()
+	)
+	_rules_overlay.add_child(dim)
+
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_rules_overlay.add_child(center)
+
+	var card := PanelContainer.new()
+	card.custom_minimum_size = Vector2(440, 0)
+	card.mouse_filter = Control.MOUSE_FILTER_STOP
+	card.add_theme_stylebox_override("panel", K1Widgets.metal_box(false, 12.0, COL_AMBER))
+	center.add_child(card)
+
 	var vb := VBoxContainer.new()
-	vb.add_theme_constant_override("separation", 8)
-	_rules_overlay.add_child(vb)
+	vb.add_theme_constant_override("separation", 10)
+	card.add_child(vb)
 	for line in [
 		"Quick rules",
 		"• First turns: pick 2 of 5 genes — place on home spawn pads",
@@ -1322,12 +1364,10 @@ func show_first_match_rules_overlay() -> void:
 		vb.add_child(lbl)
 	var dismiss := Button.new()
 	dismiss.text = "Got it"
-	dismiss.pressed.connect(func() -> void:
-		_rules_overlay.visible = false
-		GameSettings.seen_rules_overlay = true
-		GameSettings.save_settings()
-	)
-	K1Widgets.apply_body_font(dismiss, 12)
+	dismiss.custom_minimum_size = Vector2(0, 40)
+	dismiss.pressed.connect(dismiss_rules_overlay)
+	K1Widgets.apply_body_font(dismiss, 13)
+	_style_button(dismiss)
 	vb.add_child(dismiss)
 
 func show_pass_interstitial(player: int, cp0: int, cp1: int) -> void:

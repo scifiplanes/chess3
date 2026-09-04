@@ -621,7 +621,7 @@ func _try_combat(gs, sid: int, style: int) -> bool:
 							DemoCommentaryScript.cell_str(s.cell),
 						])
 					else:
-						_log("%s %s chips %s at %s (−%d %s)" % [
+						_log("%s %s chips %s at %s (-%d %s)" % [
 							_player_tag(gs),
 							DemoCommentaryScript.action_label(aid),
 							DemoCommentaryScript.squad_tag(eid),

@@ -1395,7 +1395,7 @@ func show_pass_interstitial(player: int, cp0: int, cp1: int) -> void:
 		K1Widgets.apply_body_font(hint, 9)
 		hint.add_theme_color_override("font_color", Color(COL_TEXT.r, COL_TEXT.g, COL_TEXT.b, 0.45))
 		vb.add_child(hint)
-	_pass_interstitial_lbl.text = "PASS -> P%d  ·  CP %d–%d" % [player + 1, cp0, cp1]
+	_pass_interstitial_lbl.text = "PASS -> P%d  ·  CP %d-%d" % [player + 1, cp0, cp1]
 	_pass_interstitial.visible = true
 	var tw := create_tween()
 	tw.tween_interval(0.85)

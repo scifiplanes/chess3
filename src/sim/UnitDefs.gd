@@ -111,7 +111,7 @@ static func ability_summary(unit_def_id: String, is_mutant: bool = false) -> Str
 		if unit_def_id == "rot":
 			return "Curse: +1 dmg taken"
 		if unit_def_id == "leech":
-			return "Curse: −1 move"
+			return "Curse: -1 move"
 		if unit_def_id == "static":
 			return "Curse: +1 ability CD"
 		return "Passive"

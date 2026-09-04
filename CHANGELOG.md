@@ -9,6 +9,7 @@ This changelog is intentionally **concise**:
 
 ## Unreleased
 
+- **Fix (Web/UI)**: specimen-rack remove control and other UI use ASCII `-` / `x` — Noto Sans has no U+2212 minus (was tofu under Cardiac Core).
 - **Fix (Web/UX)**: first-match rules is a full-screen modal (dimmer + Got it); Esc dismisses via `_input` before focus steal; tutorial saves no longer thrash HTML5 window mode; demo move logs use ASCII `->`; gene cartridges stay clickable when unplayable (dim + toast); offer tray clears keys hover overlap; pause Quit / demo exit uses deferred scene change (HTML5 `quit()` is a dead end).
 - **Fix (Web/UI)**: default UI font is Latin-only (SystemFont desktop / Noto Sans Web); color-emoji only on emoji Labels — chaining Noto Color Emoji into the theme was tofu'ing all text; ASCII `->`/`<-` for arrows.
 - **Fix**: mushroom/prop sprites plant on tile tops (`FIXED_Y` billboard + foot sink) — full billboard was tipping them toward the camera and floating feet.

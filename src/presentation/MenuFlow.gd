@@ -460,14 +460,14 @@ func _rack_cartridge(gid: String, count: int, accent: Color, can_remove: bool) -
 	blurb.add_theme_color_override("font_color", Color(0.78, 0.74, 0.66, 0.95))
 	v.add_child(blurb)
 	var meta := Label.new()
-	meta.text = "×%d · %dpt ea" % [count, int(DeckRulesScript.GENE_COSTS.get(gid, 0))]
+	meta.text = "x%d · %dpt ea" % [count, int(DeckRulesScript.GENE_COSTS.get(gid, 0))]
 	meta.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	K1Widgets.apply_readable_font(meta, 12)
 	meta.add_theme_color_override("font_color", Color(1.0, 0.86, 0.42, 1.0))
 	v.add_child(meta)
 	if can_remove:
 		var rm := Button.new()
-		rm.text = "−"
+		rm.text = "-"
 		rm.tooltip_text = "Remove one"
 		rm.flat = true
 		rm.custom_minimum_size = Vector2(32, 24)
@@ -491,7 +491,7 @@ func _catalog_tile(gid: String, accent: Color) -> Button:
 		UnitDefsScript.emoji_for(gid),
 		str(DeckRulesScript.GENE_NAMES.get(gid, gid)),
 		int(DeckRulesScript.GENE_COSTS.get(gid, 0)),
-		(" ·×%d" % n) if n > 0 else "",
+		(" ·x%d" % n) if n > 0 else "",
 	]
 	K1Widgets.apply_mixed_emoji_font(b, 9)
 	var sb := StyleBoxFlat.new()

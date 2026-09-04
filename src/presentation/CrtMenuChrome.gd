@@ -221,7 +221,7 @@ static func gene_stepper(count: int, accent: Color, minus_cb: Callable, plus_cb:
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	cap.add_child(row)
 	var minus := Button.new()
-	minus.text = "−"
+	minus.text = "-"
 	minus.flat = true
 	minus.custom_minimum_size = Vector2(24, 24)
 	minus.pressed.connect(minus_cb)

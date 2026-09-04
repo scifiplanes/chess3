@@ -177,7 +177,7 @@ func _refresh_face() -> void:
 		if is_mutant:
 			title = "M·%s" % name
 		if _dup_count > 1:
-			title = "%s ×%d" % [title, _dup_count]
+			title = "%s x%d" % [title, _dup_count]
 		_code_label.text = title
 	var ability := str(DeckRulesScript.GENE_BLURBS.get(def_id, ""))
 	if ability == "":
@@ -194,7 +194,7 @@ func _refresh_face() -> void:
 	var kind := "Mutant organ" if is_mutant else "Organ"
 	var tip := "%s %s — %s (%s)" % [emoji, name, ability, kind]
 	if _dup_count > 1:
-		tip += " · ×%d in pool" % _dup_count
+		tip += " · x%d in pool" % _dup_count
 	tooltip_text = tip
 
 func _cartridge_box(inset: bool, border: Color) -> StyleBoxFlat:
